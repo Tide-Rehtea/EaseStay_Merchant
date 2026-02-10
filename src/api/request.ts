@@ -82,7 +82,7 @@ export const validatedRequest = <TReq, TRes>(
           }
         } catch (error) {
           if (error instanceof ZodError) {
-            console.error('❌ 请求数据验证错误:', error);
+            console.error(config.url, '请求数据验证错误:', error);
             const issues = (error as any).issues || [];
             const errorMsg = issues.map((issue: any) => 
               `${issue.path?.join('.') || '数据'}: ${issue.message}`
@@ -114,7 +114,7 @@ export const validatedRequest = <TReq, TRes>(
             resolve(result);
           } catch (error) {
             if (error instanceof ZodError) {
-              console.error('❌ 响应数据验证错误:', error);
+              console.error(config.url, '响应数据验证错误:', error.issues);
               const issues = (error as any).issues || [];
               const errorMsg = issues.map((issue: any) => 
                 `${issue.path?.join('.') || '数据'}: ${issue.message}`

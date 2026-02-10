@@ -35,7 +35,7 @@ const RegisterContainer = styled.div`
   justify-content: center;
   align-items: center;
   min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background-image: linear-gradient(90deg, #e0c3fc 0%, #8ec5fc 100%);
   padding: 20px;
 `;
 
@@ -55,12 +55,13 @@ const LogoSection = styled.div`
 `;
 
 const Logo = styled.div`
-  font-size: 28px;
+  font-size: 32px;
   font-weight: 700;
   color: #1890ff;
   margin-bottom: 8px;
+  letter-spacing: 1px;
   .logo-text {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background-image: linear-gradient(90deg, #e0c3fc 0%, #8ec5fc 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;

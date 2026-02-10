@@ -32,7 +32,7 @@ const LoginContainer = styled.div`
   justify-content: center;
   align-items: center;
   min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background-image: linear-gradient(90deg, #e0c3fc 0%, #8ec5fc 100%);
   padding: 20px;
 `;
 
@@ -58,7 +58,7 @@ const Logo = styled.div`
   margin-bottom: 8px;
   letter-spacing: 1px;
   .logo-text {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background-image: linear-gradient(90deg, #e0c3fc 0%, #8ec5fc 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -152,7 +152,7 @@ const Login: React.FC = () => {
           <Logo>
             <span className="logo-text">易宿酒店管理平台</span>
           </Logo>
-          <Title level={3} style={{ margin: '16px 0 8px' }}>
+          <Title level={3} style={{ margin: '16px 0' }}>
             用户登录
           </Title>
           <Text type="secondary">登录您的酒店管理账户</Text>
