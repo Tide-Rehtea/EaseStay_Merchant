@@ -3,12 +3,14 @@ import {
   hotelApi,
   adminApi
 } from './modules/hotel';
+import uploadApi from './modules/upload';
 
 // 统一API接口
 export const api = {
   auth: authApi,
   hotel: hotelApi,
   admin: adminApi,
+  upload: uploadApi
 };
 
 // 类型导出
@@ -28,6 +30,8 @@ export type {
   ResHotelListResponse,
   ResHotelResponse,
   ResStatisticsResponse,
+  ResUploadResponse,
+  ResUploadMultipleResponse
 } from './types';
 
 // 请求函数导出

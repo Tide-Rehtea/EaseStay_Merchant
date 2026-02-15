@@ -27,12 +27,14 @@ export const reqHotelCreateSchema = z.object({
   room_type: z.array(roomTypeSchema).min(1, '至少需要一个房型'),
   price: z.number().min(0),
   open_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, '日期格式应为YYYY-MM-DD'),
-  images: z.array(z.string()).default([]),
   tags: z.array(z.string()).optional(),
   facilities: z.array(z.string()).optional(),
   nearby_attractions: z.string().optional(),
   discount: z.number().min(0).max(1).optional(),
   discount_description: z.string().optional(),
+  images: z.array(
+    z.string().regex(/^\/uploads\//, '图片URL必须以/uploads/开头')
+  ).max(10, '最多上传10张图片').optional().default([]),
 });
 
 // 查询参数
@@ -70,16 +72,16 @@ export const resHotelSchema = z.object({
   address: z.string(),
   star: z.number(),
   room_type: z.array(roomTypeSchema),
-  price: z.string(),
+  price: z.number().min(0),
   open_date: z.string(),
   images: z.array(z.string()),
   tags: z.array(z.string()).nullable(),
   facilities: z.array(z.string()).nullable(),
   nearby_attractions: z.string().nullable(),
-  discount: z.string().nullable(),
+  discount: z.number().nullable(),
   discount_description: z.string().nullable(),
   status: z.enum(['pending', 'approved', 'rejected', 'offline']),
-  reject_reason: z.string().nullable(),
+  reject_reason: z.string().optional().nullable(),
   merchant_id: z.number(),
   created_at: z.string().datetime(),
   updated_at: z.string().datetime(),
@@ -122,6 +124,30 @@ export const resStatisticsResponseSchema = z.object({
   }),
 });
 
+// 图片上传响应类型
+export const resUploadResponseSchema = z.object({
+  success: z.boolean(),
+  message: z.string().optional(),
+  data: z.object({
+    url: z.string(),
+    thumbnail: z.string().nullable(),
+    filename: z.string(),
+    size: z.number(),
+  }),
+});
+
+export const resUploadMultipleResponseSchema = z.object({
+  success: z.boolean(),
+  data: z.object({
+    files: z.array(z.object({
+      url: z.string(),
+      thumbnail: z.string().nullable(),
+      filename: z.string(),
+      size: z.number(),
+    })),
+  }),
+});
+
 // ==================== 类型导出 ====================
 
 // 请求类型
@@ -135,3 +161,5 @@ export type ResHotel = z.infer<typeof resHotelSchema>;
 export type ResHotelListResponse = z.infer<typeof resHotelListResponseSchema>;
 export type ResHotelResponse = z.infer<typeof resHotelResponseSchema>;
 export type ResStatisticsResponse = z.infer<typeof resStatisticsResponseSchema>;
+export type ResUploadResponse = z.infer<typeof resUploadResponseSchema>;
+export type ResUploadMultipleResponse = z.infer<typeof resUploadMultipleResponseSchema>;
