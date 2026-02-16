@@ -33,9 +33,9 @@ import {
   CheckCircleOutlined,
   CloseCircleOutlined,
   ClockCircleOutlined,
-  MinusCircleOutlined,
+  PlayCircleOutlined,
+  PauseCircleOutlined,
   StarOutlined,
-  PictureOutlined,
   WifiOutlined,
   CarOutlined,
   CoffeeOutlined,
@@ -55,23 +55,21 @@ import {
   FundOutlined,
   CloudOutlined,
   ThunderboltOutlined,
-  GlobalOutlined
+  GlobalOutlined,
 } from "@ant-design/icons";
 import styled from "styled-components";
 import dayjs from "dayjs";
 import { api } from "@/api";
-import type { ResHotel } from "@/api/types";
+import type { ResHotel} from "@/api/types";
 
 const { Title, Text, Paragraph } = Typography;
 const { TabPane } = Tabs;
 
-// 样式组件 - 先定义所有基础组件
+// 样式组件（保持不变）
 const PageContainer = styled.div`
   display: flex;
   flex-direction: column;
   gap: 24px;
-//   padding: 4px;
-  min-height: 100%;
 `;
 
 const PageHeaderContainer = styled.div`
@@ -136,39 +134,56 @@ const LoadingContainer = styled.div`
   }
 `;
 
-const StatusTag = styled.div<{ status: string }>`
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
+const StatusTagGroup = styled(Flex)`
+  gap: 8px;
+`;
+
+const ReviewStatusTag = styled(Tag)<{ $status: string }>`
   padding: 6px 16px;
   border-radius: 30px;
   font-size: 14px;
   font-weight: 500;
-  background: ${(props) =>
-    props.status === "pending"
-      ? "linear-gradient(135deg, #fff7e6 0%, #fff2e0 100%)"
-      : props.status === "approved"
-        ? "linear-gradient(135deg, #f6ffed 0%, #f0ffe6 100%)"
-        : props.status === "rejected"
-          ? "linear-gradient(135deg, #fff2f0 0%, #ffece8 100%)"
-          : "linear-gradient(135deg, #f5f5f5 0%, #f0f0f0 100%)"};
-  color: ${(props) =>
-    props.status === "pending"
-      ? "#fa8c16"
-      : props.status === "approved"
-        ? "#52c41a"
-        : props.status === "rejected"
-          ? "#f5222d"
-          : "#8c8c8c"};
-  border: 1px solid
-    ${(props) =>
-      props.status === "pending"
-        ? "#ffd591"
-        : props.status === "approved"
-          ? "#b7eb8f"
-          : props.status === "rejected"
-            ? "#ffccc7"
-            : "#d9d9d9"};
+  border: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: ${props => {
+    switch (props.$status) {
+      case 'pending': return 'linear-gradient(135deg, #fff7e6 0%, #fff2e0 100%)';
+      case 'approved': return 'linear-gradient(135deg, #f6ffed 0%, #f0ffe6 100%)';
+      case 'rejected': return 'linear-gradient(135deg, #fff2f0 0%, #ffece8 100%)';
+    }
+  }};
+  color: ${props => {
+    switch (props.$status) {
+      case 'pending': return '#fa8c16';
+      case 'approved': return '#52c41a';
+      case 'rejected': return '#f5222d';
+    }
+  }};
+  border: 1px solid ${props => {
+    switch (props.$status) {
+      case 'pending': return '#ffd591';
+      case 'approved': return '#b7eb8f';
+      case 'rejected': return '#ffccc7';
+    }
+  }};
+`;
+
+const PublishStatusTag = styled(Tag)<{ $status: string }>`
+  padding: 6px 16px;
+  border-radius: 30px;
+  font-size: 14px;
+  font-weight: 500;
+  border: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: ${props => props.$status === 'published' 
+    ? 'linear-gradient(135deg, #f6ffed 0%, #f0ffe6 100%)' 
+    : 'linear-gradient(135deg, #f5f5f5 0%, #f0f0f0 100%)'};
+  color: ${props => props.$status === 'published' ? '#52c41a' : '#8c8c8c'};
+  border: 1px solid ${props => props.$status === 'published' ? '#b7eb8f' : '#d9d9d9'};
 `;
 
 const Section = styled.div`
@@ -331,7 +346,6 @@ const RoomPrice = styled.div`
   }
 `;
 
-// 重新定义 InfoCard 在 RoomFacilityTag 之前
 const InfoCard = styled(Card)`
   border-radius: 16px;
   border: 1px solid #f0f0f0;
@@ -429,90 +443,6 @@ const StatItem = styled.div`
   }
 `;
 
-const TagCloud = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 16px;
-`;
-
-const CustomTag = styled(Tag)<{ color?: string }>`
-  padding: 8px 18px;
-  border-radius: 30px;
-  font-size: 13px;
-  font-weight: 500;
-  border: none;
-  background: ${(props) => {
-    switch (props.color) {
-      case "亲子":
-        return "linear-gradient(135deg, #ff85b3 0%, #ffadd2 100%)";
-      case "豪华":
-        return "linear-gradient(135deg, #722ed1 0%, #9254de 100%)";
-      case "商务":
-        return "linear-gradient(135deg, #0958d9 0%, #1677ff 100%)";
-      case "情侣":
-        return "linear-gradient(135deg, #f759ab 0%, #ff85c0 100%)";
-      case "度假":
-        return "linear-gradient(135deg, #13c2c2 0%, #36cfc9 100%)";
-      case "温泉":
-        return "linear-gradient(135deg, #fa8c16 0%, #ffa940 100%)";
-      case "海景":
-        return "linear-gradient(135deg, #1677ff 0%, #4096ff 100%)";
-      case "山景":
-        return "linear-gradient(135deg, #389e0d 0%, #52c41a 100%)";
-      case "城市中心":
-        return "linear-gradient(135deg, #fa541c 0%, #ff7a45 100%)";
-      case "机场附近":
-        return "linear-gradient(135deg, #722ed1 0%, #9254de 100%)";
-      case "火车站附近":
-        return "linear-gradient(135deg, #eb2f96 0%, #f759ab 100%)";
-      case "免费停车":
-        return "linear-gradient(135deg, #52c41a 0%, #73d13d 100%)";
-      case "免费早餐":
-        return "linear-gradient(135deg, #faad14 0%, #ffc53d 100%)";
-      case "泳池":
-        return "linear-gradient(135deg, #13c2c2 0%, #36cfc9 100%)";
-      case "健身房":
-        return "linear-gradient(135deg, #fa8c16 0%, #ffa940 100%)";
-      case "SPA":
-        return "linear-gradient(135deg, #eb2f96 0%, #f759ab 100%)";
-      default:
-        return "linear-gradient(135deg, #e6f7ff 0%, #bae7ff 100%)";
-    }
-  }};
-  color: ${(props) => {
-    switch (props.color) {
-      case "亲子":
-      case "豪华":
-      case "商务":
-      case "情侣":
-      case "度假":
-      case "温泉":
-      case "海景":
-      case "山景":
-      case "城市中心":
-      case "机场附近":
-      case "火车站附近":
-      case "免费停车":
-      case "免费早餐":
-      case "泳池":
-      case "健身房":
-      case "SPA":
-        return "#fff";
-      default:
-        return "#0050b3";
-    }
-  }};
-  border: none;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
-  transition: all 0.3s;
-
-  &:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-  }
-`;
-
 const TwoColumnLayout = styled(Row)`
   display: flex;
   flex-wrap: nowrap;
@@ -598,21 +528,8 @@ const TagGrid = styled.div`
   margin-top: 8px;
 `;
 
-const CompactCustomTag = styled(CustomTag)`
-  padding: 6px 12px;
-  font-size: 12px;
-  text-align: center;
-  margin: 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-`;
-
-// 房内设施映射
-const roomFacilityMap: Record<
-  string,
-  { label: string; icon: React.ReactNode }
-> = {
+// 房内设施映射（保持不变）
+const roomFacilityMap: Record<string, { label: string; icon: React.ReactNode }> = {
   wifi: { label: "Wi-Fi", icon: <WifiOutlined /> },
   tv: { label: "电视", icon: <FundOutlined /> },
   "air-conditioner": { label: "空调", icon: <CloudOutlined /> },
@@ -631,7 +548,7 @@ const roomFacilityMap: Record<
   breakfast: { label: "早餐", icon: <CoffeeOutlined /> },
 };
 
-// 酒店设施映射
+// 酒店设施映射（保持不变）
 const facilityMap: Record<string, { label: string; icon: React.ReactNode }> = {
   wifi: { label: "Wi-Fi", icon: <WifiOutlined /> },
   parking: { label: "停车场", icon: <CarOutlined /> },
@@ -658,9 +575,17 @@ const facilityMap: Record<string, { label: string; icon: React.ReactNode }> = {
   "currency-exchange": { label: "货币兑换", icon: <DollarOutlined /> },
 };
 
-const HotelView: React.FC = () => {
+interface HotelViewProps {
+  adminActions?: (hotel: ResHotel) => React.ReactNode;
+}
+
+const HotelView: React.FC<HotelViewProps> = ({ adminActions }) => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+
+  const userStr = localStorage.getItem("user");
+  const user = userStr ? JSON.parse(userStr) : null;
+  const isAdmin = user?.role === "admin";
 
   const [loading, setLoading] = useState(true);
   const [hotel, setHotel] = useState<ResHotel | null>(null);
@@ -668,7 +593,6 @@ const HotelView: React.FC = () => {
   const [selectedImage, setSelectedImage] = useState<string>("");
   const [previewVisible, setPreviewVisible] = useState(false);
 
-  // 获取酒店详情
   useEffect(() => {
     if (id) {
       fetchHotelDetail(parseInt(id));
@@ -679,13 +603,9 @@ const HotelView: React.FC = () => {
     setLoading(true);
     try {
       const response = await api.hotel.getById(hotelId);
-      console.log("API Response:", response); // 添加这行
       if (response.success) {
         setHotel(response.data.hotel);
-        if (
-          response.data.hotel.images &&
-          response.data.hotel.images.length > 0
-        ) {
+        if (response.data.hotel.images && response.data.hotel.images.length > 0) {
           setSelectedImage(response.data.hotel.images[0]);
         }
       } else {
@@ -699,39 +619,8 @@ const HotelView: React.FC = () => {
     }
   };
 
-  // 获取完整图片URL
   const getImageUrl = (path: string) => {
     return path.startsWith("http") ? path : `http://localhost:3001${path}`;
-  };
-
-  // 状态配置
-  const getStatusConfig = (status: string) => {
-    const config: Record<
-      string,
-      { color: string; text: string; icon: React.ReactNode }
-    > = {
-      pending: {
-        color: "orange",
-        text: "待审核",
-        icon: <ClockCircleOutlined />,
-      },
-      approved: {
-        color: "green",
-        text: "已通过",
-        icon: <CheckCircleOutlined />,
-      },
-      rejected: {
-        color: "red",
-        text: "已拒绝",
-        icon: <CloseCircleOutlined />,
-      },
-      offline: {
-        color: "gray",
-        text: "已下线",
-        icon: <MinusCircleOutlined />,
-      },
-    };
-    return config[status] || config.pending;
   };
 
   if (loading) {
@@ -766,68 +655,71 @@ const HotelView: React.FC = () => {
     );
   }
 
-  const statusConfig = getStatusConfig(hotel.status);
   const lowestPrice =
     hotel.room_type?.reduce(
       (min, room) => Math.min(min, room.price),
       Infinity,
     ) || 0;
 
-  // 在这里添加调试代码 👇
-  console.log("========== 调试信息 ==========");
-  console.log("酒店数据:", hotel);
-  console.log("设施数据:", hotel.facilities);
-  console.log("设施数组长度:", hotel.facilities?.length);
-  console.log("标签数据:", hotel.tags);
-  console.log("标签数组长度:", hotel.tags?.length);
-  console.log("==============================");
-
   return (
     <PageContainer>
-      {/* 页面头部 */}
       <PageHeaderContainer>
         <Flex vertical gap={16}>
           <Flex justify="space-between" align="center">
             <Flex align="center" gap={16}>
               <Button
                 icon={<ArrowLeftOutlined />}
-                onClick={() => navigate("/merchant/hotels")}
+                onClick={() => navigate(isAdmin ? "/admin/hotels" : "/merchant/hotels")}
                 size="large"
                 style={{ borderRadius: 12 }}
               >
                 返回列表
               </Button>
 
-              <Title
-                level={2}
-                style={{ margin: 0, fontWeight: 700, color: "#1f1f1f" }}
-              >
+              <Title level={2} style={{ margin: 0, fontWeight: 700, color: "#1f1f1f" }}>
                 {hotel.name}
               </Title>
 
-              <StatusTag status={hotel.status}>
-                {statusConfig.icon}
-                {statusConfig.text}
-              </StatusTag>
+              <StatusTagGroup>
+                <ReviewStatusTag $status={hotel.review_status}>
+                  {hotel.review_status === 'pending' && <ClockCircleOutlined />}
+                  {hotel.review_status === 'approved' && <CheckCircleOutlined />}
+                  {hotel.review_status === 'rejected' && <CloseCircleOutlined />}
+                  {hotel.review_status === 'pending' && '待审核'}
+                  {hotel.review_status === 'approved' && '审核通过'}
+                  {hotel.review_status === 'rejected' && '已拒绝'}
+                </ReviewStatusTag>
+                
+                <PublishStatusTag $status={hotel.publish_status}>
+                  {hotel.publish_status === 'published' ? <PlayCircleOutlined /> : <PauseCircleOutlined />}
+                  {hotel.publish_status === 'published' ? '已发布' : '未发布'}
+                </PublishStatusTag>
+              </StatusTagGroup>
             </Flex>
 
-            <Button
-              type="primary"
-              icon={<EditOutlined />}
-              onClick={() => navigate(`/merchant/hotels/${id}`)}
-              disabled={hotel.status === "pending"}
-              size="large"
-              style={{
-                borderRadius: 12,
-                height: 48,
-                padding: "0 32px",
-                background: "linear-gradient(135deg, #1890ff 0%, #36cfc9 100%)",
-                border: "none",
-                boxShadow: "0 4px 12px rgba(24, 144, 255, 0.3)",
-              }}
-            >
-              编辑酒店
-            </Button>
+            <Flex align="center" gap={12}>
+              {adminActions && adminActions(hotel)}
+              {!isAdmin && (
+                <Button
+                  type="primary"
+                  icon={<EditOutlined />}
+                  onClick={() => navigate(`/merchant/hotels/${id}`)}
+                  disabled={hotel.review_status === "pending"}
+                  size="large"
+                  style={{
+                    borderRadius: 12,
+                    height: 48,
+                    padding: "0 32px",
+                    background:
+                      "linear-gradient(135deg, #1890ff 0%, #36cfc9 100%)",
+                    border: "none",
+                    boxShadow: "0 4px 12px rgba(24, 144, 255, 0.3)",
+                  }}
+                >
+                  编辑酒店
+                </Button>
+              )}
+            </Flex>
           </Flex>
 
           {hotel.reject_reason && (
@@ -842,7 +734,6 @@ const HotelView: React.FC = () => {
         </Flex>
       </PageHeaderContainer>
 
-      {/* 主要内容 */}
       <ContentCard>
         <Tabs defaultActiveKey="1" size="large">
           <TabPane
@@ -854,7 +745,6 @@ const HotelView: React.FC = () => {
             }
             key="1"
           >
-            {/* 图片展示区 */}
             {hotel.images && hotel.images.length > 0 && (
               <GallerySection>
                 <MainImage onClick={() => setPreviewVisible(true)}>
@@ -876,7 +766,6 @@ const HotelView: React.FC = () => {
                   ))}
                 </ThumbnailGrid>
 
-                {/* 图片预览 Modal */}
                 <Image
                   style={{ display: "none" }}
                   preview={{
@@ -892,7 +781,6 @@ const HotelView: React.FC = () => {
             <Section>
               <TwoColumnLayout gutter={32}>
                 <LeftColumn span={16}>
-                  {/* 位置信息 */}
                   <SectionTitle>
                     <div className="icon-wrapper">
                       <EnvironmentOutlined />
@@ -917,7 +805,6 @@ const HotelView: React.FC = () => {
 
                   <Divider style={{ margin: "24px 0" }} />
 
-                  {/* 房型信息 */}
                   <SectionTitle>
                     <div className="icon-wrapper">
                       <DollarOutlined />
@@ -966,7 +853,6 @@ const HotelView: React.FC = () => {
                         </Col>
                       </Row>
 
-                      {/* 房内设施 */}
                       {room.facilities && room.facilities.length > 0 && (
                         <Flex wrap gap={8} style={{ marginTop: 16 }}>
                           {room.facilities.map((facility) => {
@@ -988,7 +874,6 @@ const HotelView: React.FC = () => {
                 </LeftColumn>
 
                 <RightColumn span={8}>
-                  {/* 快捷信息卡片 - 更紧凑的布局 */}
                   <StickyInfoCard title="酒店信息">
                     <CompactStatItem>
                       <span className="label">
@@ -1048,7 +933,6 @@ const HotelView: React.FC = () => {
                     )}
                   </StickyInfoCard>
 
-                  {/* 设施与服务 - 网格布局 */}
                   {hotel.facilities && hotel.facilities.length > 0 && (
                     <InfoCard title="设施与服务">
                       <FacilityGrid>
@@ -1068,14 +952,22 @@ const HotelView: React.FC = () => {
                     </InfoCard>
                   )}
 
-                  {/* 酒店标签 - 网格布局 */}
                   {hotel.tags && hotel.tags.length > 0 && (
                     <InfoCard title="酒店标签">
                       <TagGrid>
                         {hotel.tags.map((tag) => (
-                          <CompactCustomTag key={tag} color={tag}>
+                          <Tag
+                            key={tag}
+                            color="blue"
+                            style={{
+                              padding: "6px 12px",
+                              margin: 0,
+                              textAlign: "center",
+                              borderRadius: 20,
+                            }}
+                          >
                             {tag}
-                          </CompactCustomTag>
+                          </Tag>
                         ))}
                       </TagGrid>
                     </InfoCard>
@@ -1140,10 +1032,23 @@ const HotelView: React.FC = () => {
                   {dayjs(hotel.updated_at).format("YYYY-MM-DD HH:mm")}
                 </Descriptions.Item>
 
-                <Descriptions.Item label="酒店状态">
+                <Descriptions.Item label="审核状态">
                   <Badge
-                    status={statusConfig.color as any}
-                    text={statusConfig.text}
+                    status={
+                      hotel.review_status === 'pending' ? 'warning' :
+                      hotel.review_status === 'approved' ? 'success' : 'error'
+                    }
+                    text={
+                      hotel.review_status === 'pending' ? '待审核' :
+                      hotel.review_status === 'approved' ? '审核通过' : '已拒绝'
+                    }
+                  />
+                </Descriptions.Item>
+
+                <Descriptions.Item label="发布状态">
+                  <Badge
+                    status={hotel.publish_status === 'published' ? 'success' : 'default'}
+                    text={hotel.publish_status === 'published' ? '已发布' : '未发布'}
                   />
                 </Descriptions.Item>
 

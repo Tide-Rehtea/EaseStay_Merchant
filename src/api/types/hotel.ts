@@ -39,7 +39,7 @@ export const reqHotelCreateSchema = z.object({
 
 // 查询参数
 export const reqHotelQuerySchema = reqPaginationSchema.extend({
-  status: z.enum(['pending', 'approved', 'rejected', 'offline']).optional(),
+  review_status: z.enum(['pending', 'approved', 'rejected']).optional(),
   merchant_id: z.number().optional(),
   start_date: z.string().optional(),
   end_date: z.string().optional(),
@@ -80,7 +80,8 @@ export const resHotelSchema = z.object({
   nearby_attractions: z.string().nullable(),
   discount: z.number().nullable(),
   discount_description: z.string().nullable(),
-  status: z.enum(['pending', 'approved', 'rejected', 'offline']),
+  review_status: z.enum(['pending', 'approved', 'rejected']),
+  publish_status: z.enum(['published', 'unpublished']),
   reject_reason: z.string().optional().nullable(),
   merchant_id: z.number(),
   created_at: z.string().datetime(),
@@ -118,8 +119,15 @@ export const resStatisticsResponseSchema = z.object({
   success: z.boolean(),
   data: z.object({
     total_hotels: z.number(),
-    pending_hotels: z.number(),
-    approved_hotels: z.number(),
+    review_stats: z.object({
+      pending: z.number(),
+      approved: z.number(),
+      rejected: z.number()
+    }),
+    publish_stats: z.object({
+      published: z.number(),
+      unpublished: z.number()
+    }),
     total_merchants: z.number(),
   }),
 });

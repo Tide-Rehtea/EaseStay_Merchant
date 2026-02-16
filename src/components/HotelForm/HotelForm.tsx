@@ -1026,8 +1026,8 @@ const HotelForm: React.FC<HotelFormProps> = ({
           <Text type="secondary" style={{ fontSize: 14 }}>
             <InfoCircleOutlined />{" "}
             {isEdit
-              ? "修改酒店信息后需要重新审核"
-              : "提交后酒店将进入审核状态，审核通过后才会在前端显示"}
+              ? "修改酒店信息后需要重新审核，发布状态保持不变，审核通过后可手动发布"
+              : "提交后酒店将进入审核状态，审核通过后需手动发布才会在前端显示"}
           </Text>
           <Space size={16}>
             <Button

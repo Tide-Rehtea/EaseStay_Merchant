@@ -1,5 +1,6 @@
+// HotelList.tsx
 import React, { useState, useEffect, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Card,
   Table,
@@ -35,16 +36,18 @@ import {
   CloseCircleOutlined,
   ClockCircleOutlined,
   MinusCircleOutlined,
+  PlayCircleOutlined,
+  PauseCircleOutlined,
 } from '@ant-design/icons';
 import styled from 'styled-components';
 import dayjs from 'dayjs';
 import { api } from '@/api';
-import type { ResHotel } from '@/api/types';
+import type { ResHotel} from '@/api/types';
 
 const { Title, Text } = Typography;
 const { RangePicker } = DatePicker;
 
-// 样式组件
+// 样式组件（保持不变）
 const PageContainer = styled.div`
   display: flex;
   flex-direction: column;
@@ -146,7 +149,7 @@ const ActionButton = styled(Button)`
 `;
 
 // 状态配置
-const statusOptions = [
+const reviewStatusOptions = [
   { 
     value: 'pending', 
     label: '待审核',
@@ -155,7 +158,7 @@ const statusOptions = [
   },
   { 
     value: 'approved', 
-    label: '已通过',
+    label: '审核通过',
     icon: <CheckCircleOutlined style={{ color: '#52c41a' }} />,
     color: 'green'
   },
@@ -165,15 +168,24 @@ const statusOptions = [
     icon: <CloseCircleOutlined style={{ color: '#ff4d4f' }} />,
     color: 'red'
   },
+];
+
+const publishStatusOptions = [
   { 
-    value: 'offline', 
-    label: '已下线',
-    icon: <MinusCircleOutlined style={{ color: '#bfbfbf' }} />,
+    value: 'published', 
+    label: '已发布',
+    icon: <PlayCircleOutlined style={{ color: '#52c41a' }} />,
+    color: 'green'
+  },
+  { 
+    value: 'unpublished', 
+    label: '未发布',
+    icon: <PauseCircleOutlined style={{ color: '#8c8c8c' }} />,
     color: 'gray'
   },
 ];
 
-const statusConfig: Record<string, { color: string; text: string; icon: React.ReactNode }> = {
+const reviewStatusConfig: Record<string, { color: string; text: string; icon: React.ReactNode }> = {
   pending: { 
     color: 'orange', 
     text: '待审核',
@@ -181,7 +193,7 @@ const statusConfig: Record<string, { color: string; text: string; icon: React.Re
   },
   approved: { 
     color: 'green', 
-    text: '已通过',
+    text: '审核通过',
     icon: <CheckCircleOutlined /> 
   },
   rejected: { 
@@ -189,15 +201,30 @@ const statusConfig: Record<string, { color: string; text: string; icon: React.Re
     text: '已拒绝',
     icon: <CloseCircleOutlined /> 
   },
-  offline: { 
-    color: 'gray', 
-    text: '已下线',
-    icon: <MinusCircleOutlined /> 
+};
+
+const publishStatusConfig: Record<string, { color: string; text: string; icon: React.ReactNode }> = {
+  published: { 
+    color: 'green', 
+    text: '已发布',
+    icon: <PlayCircleOutlined /> 
   },
+  unpublished: { 
+    color: 'gray', 
+    text: '未发布',
+    icon: <PauseCircleOutlined /> 
+  },
+};
+
+// 解析URL参数
+const useQuery = () => {
+  const { search } = useLocation();
+  return useMemo(() => new URLSearchParams(search), [search]);
 };
 
 const HotelList: React.FC = () => {
   const navigate = useNavigate();
+  const query = useQuery();
   
   // 状态管理
   const [loading, setLoading] = useState(false);
@@ -210,27 +237,24 @@ const HotelList: React.FC = () => {
   
   // 筛选条件
   const [filters, setFilters] = useState({
-    status: undefined as string | undefined, // 后端筛选（实时触发）
-    search: '', // 前端筛选
-    dateRange: undefined as [dayjs.Dayjs, dayjs.Dayjs] | undefined, // 前端筛选
+    review_status: (query.get('review_status') as string) || undefined,
+    publish_status: (query.get('publish_status') as string) || undefined,
+    search: '',
+    dateRange: undefined as [dayjs.Dayjs, dayjs.Dayjs] | undefined,
   });
 
-  // 获取酒店列表（根据状态去后端查询）
+  // 获取酒店列表
   const fetchHotels = async (page = 1, pageSize = 10) => {
     setLoading(true);
     try {
-      // 构建查询参数 - 保留状态筛选
       const params: any = {
         page,
         limit: pageSize,
       };
 
-      // 只有当有状态筛选时才添加到参数中
-      if (filters.status) {
-        params.status = filters.status;
+      if (filters.review_status) {
+        params.review_status = filters.review_status;
       }
-
-      console.log('请求参数:', params); // 调试用
 
       const response = await api.hotel.getMyHotels(params);
       if (response.success) {
@@ -240,15 +264,9 @@ const HotelList: React.FC = () => {
           pageSize,
           total: response.data.pagination.total,
         });
-      } else {
-        message.error('获取酒店列表失败');
       }
     } catch (error: any) {
-      console.error('获取酒店列表失败:', error);
-      message.error({
-        content: error.message || '获取酒店列表失败',
-        icon: <CloseCircleOutlined />,
-      });
+      message.error(error.message || '获取酒店列表失败');
     } finally {
       setLoading(false);
     }
@@ -259,15 +277,15 @@ const HotelList: React.FC = () => {
     fetchHotels();
   }, []);
 
-  // 当状态筛选变化时，重新请求后端
+  // 当审核状态变化时，重新请求后端
   useEffect(() => {
     fetchHotels(1, pagination.pageSize);
-  }, [filters.status]); // 只有 status 变化时才重新请求
+  }, [filters.review_status]);
 
-  // 前端筛选后的数据（名称和日期）
+  // 前端筛选后的数据（名称、发布状态和日期）
   const filteredHotels = useMemo(() => {
     return hotels.filter(hotel => {
-      // 名称搜索筛选（前端）
+      // 名称搜索筛选
       if (filters.search) {
         const searchLower = filters.search.toLowerCase();
         const nameMatch = hotel.name?.toLowerCase().includes(searchLower);
@@ -277,7 +295,12 @@ const HotelList: React.FC = () => {
         }
       }
 
-      // 日期范围筛选（前端）
+      // 发布状态筛选（前端）
+      if (filters.publish_status && hotel.publish_status !== filters.publish_status) {
+        return false;
+      }
+
+      // 日期范围筛选
       if (filters.dateRange && filters.dateRange[0] && filters.dateRange[1]) {
         const hotelDate = dayjs(hotel.created_at);
         const startDate = filters.dateRange[0].startOf('day');
@@ -289,7 +312,7 @@ const HotelList: React.FC = () => {
 
       return true;
     });
-  }, [hotels, filters.search, filters.dateRange]);
+  }, [hotels, filters.search, filters.publish_status, filters.dateRange]);
 
   // 处理分页变化
   const handleTableChange = (pagination: any) => {
@@ -299,37 +322,48 @@ const HotelList: React.FC = () => {
   // 重置筛选
   const resetFilters = () => {
     setFilters({
-      status: undefined,
+      review_status: undefined,
+      publish_status: undefined,
       search: '',
       dateRange: undefined,
     });
-    // 重置后重新获取数据（不带状态筛选），useEffect 会自动触发
+    // 更新URL
+    navigate('/merchant/hotels');
   };
 
-  // 删除酒店
-  const handleDelete = async (id: number) => {
-    try {
-      await api.hotel.delete(id);
-      message.success({
-        content: '酒店删除成功',
-        icon: <CheckCircleOutlined />,
-      });
-      fetchHotels(pagination.current, pagination.pageSize);
-    } catch (error: any) {
-      message.error(error.message || '删除失败');
+  // 更新URL参数
+  const updateUrlParams = (key: string, value: string | undefined) => {
+    const newQuery = new URLSearchParams(query);
+    if (value) {
+      newQuery.set(key, value);
+    } else {
+      newQuery.delete(key);
+    }
+    navigate(`/merchant/hotels?${newQuery.toString()}`);
+  };
+
+  // 处理筛选变化
+  const handleFilterChange = (key: string, value: any) => {
+    const newFilters = { ...filters, [key]: value };
+    setFilters(newFilters);
+    
+    // 更新URL
+    if (key === 'review_status' || key === 'publish_status') {
+      updateUrlParams(key, value);
     }
   };
 
-  // 统计信息（基于筛选后的数据）
+  // 统计信息
   const stats = useMemo(() => {
-    const total = filteredHotels.length;
-    const pending = filteredHotels.filter(h => h.status === 'pending').length;
-    const approved = filteredHotels.filter(h => h.status === 'approved').length;
-    const rejected = filteredHotels.filter(h => h.status === 'rejected').length;
-    const offline = filteredHotels.filter(h => h.status === 'offline').length;
+    const total = pagination.total;
+    const pending = hotels.filter(h => h.review_status === 'pending').length;
+    const approved = hotels.filter(h => h.review_status === 'approved').length;
+    const rejected = hotels.filter(h => h.review_status === 'rejected').length;
+    const published = hotels.filter(h => h.publish_status === 'published').length;
+    const unpublished = hotels.filter(h => h.publish_status === 'unpublished').length;
     
-    return { total, pending, approved, rejected, offline };
-  }, [filteredHotels]);
+    return { total, pending, approved, rejected, published, unpublished };
+  }, [hotels, pagination.total]);
 
   // 表格列定义
   const columns = [
@@ -337,7 +371,7 @@ const HotelList: React.FC = () => {
       title: '酒店信息',
       dataIndex: 'name',
       key: 'name',
-      width: 260,
+      width: 280,
       render: (text: string, record: ResHotel) => (
         <Flex vertical gap={4}>
           <Flex align="center" gap={8}>
@@ -363,7 +397,7 @@ const HotelList: React.FC = () => {
           {record.address && (
             <Flex align="center" gap={4} style={{ fontSize: 12, color: '#666', marginLeft: 40 }}>
               <EnvironmentOutlined style={{ fontSize: 12, color: '#1890ff' }} />
-              <span className="address-text" style={{ 
+              <span style={{ 
                 maxWidth: 200, 
                 overflow: 'hidden', 
                 textOverflow: 'ellipsis', 
@@ -380,97 +414,66 @@ const HotelList: React.FC = () => {
       title: '星级',
       dataIndex: 'star',
       key: 'star',
-      width: 120,
+      width: 100,
       align: 'center' as const,
       render: (stars: number) => (
         <Tooltip title={`${stars}星级酒店`}>
           <div style={{ 
-            display: 'inline-block',
-            background: 'linear-gradient(135deg, #faad1410, #ffd66610)',
-            padding: '8px 12px',
-            borderRadius: 20,
+            fontSize: 16,
+            fontWeight: 500,
+            color: '#faad14',
+            letterSpacing: 2
           }}>
-            <span style={{ fontSize: 16, fontWeight: 600, color: '#faad14' }}>
-              {'⭐'.repeat(stars)}
-            </span>
-            <Text type="secondary" style={{ fontSize: 12, marginLeft: 4 }}>
-              {stars}星
-            </Text>
+            {'⭐'.repeat(stars)}
           </div>
         </Tooltip>
       ),
-      sorter: (a: ResHotel, b: ResHotel) => Number(a.star) - Number(b.star),
     },
     {
-      title: '参考价格',
+      title: '价格',
       dataIndex: 'price',
       key: 'price',
-      width: 140,
+      width: 120,
       align: 'right' as const,
       render: (price: number) => (
         <div>
-          <div style={{ 
-            color: '#ff4d4f', 
-            fontWeight: 700, 
-            fontSize: 18,
-            fontFamily: 'Arial, sans-serif',
-          }}>
+          <div style={{ color: '#ff4d4f', fontWeight: 700, fontSize: 16 }}>
             ¥{price.toLocaleString()}
           </div>
           <Text type="secondary" style={{ fontSize: 12 }}>起/晚</Text>
         </div>
       ),
-      sorter: (a: ResHotel, b: ResHotel) => Number(a.price) - Number(b.price),
     },
     {
-      title: '房型',
-      dataIndex: 'room_type',
-      key: 'room_type',
-      width: 120,
-      render: (roomTypes: any[]) => (
-        <Tooltip 
-          title={
-            <div style={{ padding: 4 }}>
-              {roomTypes.map((room, index) => (
-                <Flex key={index} justify="space-between" gap={16} style={{ marginBottom: 4 }}>
-                  <span style={{ color: '#d9d9d9' }}>{room.type}:</span>
-                  <span style={{ color: '#ff4d4f', fontWeight: 500 }}>¥{room.price}</span>
-                </Flex>
-              ))}
-            </div>
-          }
-          overlayStyle={{ maxWidth: 300 }}
-        >
-          <div style={{ 
-            cursor: 'pointer',
-            padding: '4px 12px',
-            background: 'rgba(24, 144, 255, 0.02)',
-            borderRadius: 16,
-            display: 'inline-block',
-          }}>
-            <span style={{ fontWeight: 500 }}>{roomTypes.length}</span>
-            <span style={{ color: '#666', marginLeft: 4 }}>种房型</span>
-          </div>
-        </Tooltip>
-      ),
-    },
-    {
-      title: '状态',
-      dataIndex: 'status',
-      key: 'status',
+      title: '审核状态',
+      dataIndex: 'review_status',
+      key: 'review_status',
       width: 120,
       align: 'center' as const,
       render: (status: string) => {
-        const config = statusConfig[status] || { 
-          color: 'default', 
-          text: status, 
-          icon: <HomeOutlined /> 
-        };
-        
+        const config = reviewStatusConfig[status];
         return (
           <StatusTag status={status} color={config.color}>
             {config.icon}
             {config.text}
+          </StatusTag>
+        );
+      },
+    },
+    {
+      title: '发布状态',
+      dataIndex: 'publish_status',
+      key: 'publish_status',
+      width: 120,
+      align: 'center' as const,
+      render: (status: string, record: ResHotel) => {
+        const config = publishStatusConfig[status];
+        // 如果审核未通过，发布状态不可用
+        const isDisabled = record.review_status !== 'approved';
+        return (
+          <StatusTag status={status} color={isDisabled ? 'gray' : config.color}>
+            {config.icon}
+            {isDisabled ? '不可用' : config.text}
           </StatusTag>
         );
       },
@@ -485,8 +488,6 @@ const HotelList: React.FC = () => {
           <span style={{ color: '#666' }}>{dayjs(date).format('YYYY-MM-DD')}</span>
         </Tooltip>
       ),
-      sorter: (a: ResHotel, b: ResHotel) => 
-        dayjs(a.created_at).unix() - dayjs(b.created_at).unix(),
     },
     {
       title: '操作',
@@ -509,30 +510,11 @@ const HotelList: React.FC = () => {
             icon={<EditOutlined />}
             onClick={() => navigate(`/merchant/hotels/${record.id}`)}
             size="small"
-            disabled={record.status === 'pending'}
-            style={{ color: record.status === 'pending' ? undefined : '#1890ff' }}
+            disabled={record.review_status === 'pending'}
+            style={{ color: record.review_status === 'pending' ? undefined : '#1890ff' }}
           >
             编辑
           </ActionButton>
-          
-          <Popconfirm
-            title="删除酒店"
-            description="确定要删除这个酒店吗？删除后无法恢复！"
-            onConfirm={() => handleDelete(record.id)}
-            okText="确定"
-            cancelText="取消"
-            okButtonProps={{ danger: true }}
-          >
-            <ActionButton
-              type="text"
-              danger
-              icon={<DeleteOutlined />}
-              size="small"
-              disabled={record.status === 'pending'}
-            >
-              删除
-            </ActionButton>
-          </Popconfirm>
         </Space>
       ),
     },
@@ -540,7 +522,6 @@ const HotelList: React.FC = () => {
 
   return (
     <PageContainer>
-      {/* 页面头部 */}
       <PageHeaderContainer>
         <Flex vertical gap="small">
           <Flex justify="space-between" align="center">
@@ -572,7 +553,6 @@ const HotelList: React.FC = () => {
         </Flex>
       </PageHeaderContainer>
 
-      {/* 统计卡片 */}
       <StatsCard>
         <Row gutter={[24, 16]}>
           <Col xs={24} sm={12} md={6}>
@@ -586,46 +566,38 @@ const HotelList: React.FC = () => {
           <Col xs={24} sm={12} md={6}>
             <Statistic
               title="待审核"
-              value={hotels.filter(h => h.status === 'pending').length}
+              value={stats.pending}
               prefix={<ClockCircleOutlined style={{ color: '#faad14' }} />}
               valueStyle={{ color: '#faad14' }}
             />
           </Col>
           <Col xs={24} sm={12} md={6}>
             <Statistic
-              title="已通过"
-              value={hotels.filter(h => h.status === 'approved').length}
-              prefix={<CheckCircleOutlined style={{ color: '#52c41a' }} />}
+              title="已发布"
+              value={stats.published}
+              prefix={<PlayCircleOutlined style={{ color: '#52c41a' }} />}
               valueStyle={{ color: '#52c41a' }}
             />
           </Col>
           <Col xs={24} sm={12} md={6}>
             <Statistic
-              title="已拒绝/下线"
-              value={hotels.filter(h => h.status === 'rejected' || h.status === 'offline').length}
-              prefix={<CloseCircleOutlined style={{ color: '#ff4d4f' }} />}
-              valueStyle={{ color: '#ff4d4f' }}
+              title="未发布"
+              value={stats.unpublished}
+              prefix={<PauseCircleOutlined style={{ color: '#8c8c8c' }} />}
+              valueStyle={{ color: '#8c8c8c' }}
             />
           </Col>
         </Row>
       </StatsCard>
 
-      {/* 筛选栏 - 移除了查询按钮 */}
       <FilterCard>
         <Flex vertical gap={16}>
           <Flex align="center" justify="space-between">
             <Flex align="center" gap={8}>
               <FilterOutlined style={{ color: '#1890ff' }} />
               <Text strong style={{ fontSize: 16 }}>筛选条件</Text>
-              <Text type="secondary" style={{ fontSize: 12 }}>
-                （状态：实时查询 / 名称和日期：前端筛选）
-              </Text>
             </Flex>
-            <Button
-              icon={<ReloadOutlined />}
-              onClick={resetFilters}
-              size="middle"
-            >
+            <Button icon={<ReloadOutlined />} onClick={resetFilters} size="middle">
               重置
             </Button>
           </Flex>
@@ -635,25 +607,23 @@ const HotelList: React.FC = () => {
           <Row gutter={[16, 16]} align="middle">
             <Col xs={24} md={8}>
               <Input
-                placeholder="搜索酒店名称（前端实时筛选）"
+                placeholder="搜索酒店名称"
                 prefix={<SearchOutlined style={{ color: '#bfbfbf' }} />}
                 value={filters.search}
-                onChange={(e) => setFilters({ ...filters, search: e.target.value })}
+                onChange={(e) => handleFilterChange('search', e.target.value)}
                 allowClear
-                style={{ width: '100%' }}
               />
             </Col>
             
-            <Col xs={24} md={8}>
+            <Col xs={24} md={6}>
               <Select
-                placeholder="选择状态（实时查询）"
+                placeholder="审核状态"
                 style={{ width: '100%' }}
-                value={filters.status}
-                onChange={(value) => setFilters({ ...filters, status: value })}
+                value={filters.review_status}
+                onChange={(value) => handleFilterChange('review_status', value)}
                 allowClear
-                suffixIcon={<FilterOutlined style={{ color: '#bfbfbf' }} />}
               >
-                {statusOptions.map(option => (
+                {reviewStatusOptions.map(option => (
                   <Select.Option key={option.value} value={option.value}>
                     <Flex gap={8} align="center">
                       {option.icon}
@@ -664,11 +634,30 @@ const HotelList: React.FC = () => {
               </Select>
             </Col>
             
-            <Col xs={24} md={8}>
+            <Col xs={24} md={6}>
+              <Select
+                placeholder="发布状态"
+                style={{ width: '100%' }}
+                value={filters.publish_status}
+                onChange={(value) => handleFilterChange('publish_status', value)}
+                allowClear
+              >
+                {publishStatusOptions.map(option => (
+                  <Select.Option key={option.value} value={option.value}>
+                    <Flex gap={8} align="center">
+                      {option.icon}
+                      <span>{option.label}</span>
+                    </Flex>
+                  </Select.Option>
+                ))}
+              </Select>
+            </Col>
+            
+            <Col xs={24} md={6}>
               <RangePicker
                 style={{ width: '100%' }}
                 placeholder={['开始日期', '结束日期']}
-                onChange={(dates) => setFilters({ ...filters, dateRange: dates as any })}
+                onChange={(dates) => handleFilterChange('dateRange', dates)}
                 format="YYYY-MM-DD"
                 value={filters.dateRange}
               />
@@ -676,21 +665,26 @@ const HotelList: React.FC = () => {
           </Row>
 
           {/* 显示当前筛选条件 */}
-          {(filters.status || filters.search || filters.dateRange) && (
+          {(filters.review_status || filters.publish_status || filters.search || filters.dateRange) && (
             <Flex align="center" gap={8} wrap style={{ marginTop: 8 }}>
               <Text type="secondary" style={{ fontSize: 13 }}>当前筛选：</Text>
-              {filters.status && (
-                <Tag color="processing" closable onClose={() => setFilters({ ...filters, status: undefined })}>
-                  状态：{statusOptions.find(s => s.value === filters.status)?.label}
+              {filters.review_status && (
+                <Tag color="processing" closable onClose={() => handleFilterChange('review_status', undefined)}>
+                  审核：{reviewStatusOptions.find(s => s.value === filters.review_status)?.label}
+                </Tag>
+              )}
+              {filters.publish_status && (
+                <Tag color="processing" closable onClose={() => handleFilterChange('publish_status', undefined)}>
+                  发布：{publishStatusOptions.find(s => s.value === filters.publish_status)?.label}
                 </Tag>
               )}
               {filters.search && (
-                <Tag color="processing" closable onClose={() => setFilters({ ...filters, search: '' })}>
+                <Tag color="processing" closable onClose={() => handleFilterChange('search', '')}>
                   搜索：{filters.search}
                 </Tag>
               )}
               {filters.dateRange && filters.dateRange[0] && filters.dateRange[1] && (
-                <Tag color="processing" closable onClose={() => setFilters({ ...filters, dateRange: undefined })}>
+                <Tag color="processing" closable onClose={() => handleFilterChange('dateRange', undefined)}>
                   日期：{filters.dateRange[0].format('YYYY-MM-DD')} 至 {filters.dateRange[1].format('YYYY-MM-DD')}
                 </Tag>
               )}
@@ -699,7 +693,6 @@ const HotelList: React.FC = () => {
         </Flex>
       </FilterCard>
 
-      {/* 酒店表格 */}
       <TableCard>
         <Flex vertical gap={16}>
           <Flex align="center" justify="space-between">
@@ -708,18 +701,11 @@ const HotelList: React.FC = () => {
               <Title level={5} style={{ margin: 0, fontWeight: 600 }}>
                 酒店列表
               </Title>
-              {(filters.status || filters.search || filters.dateRange) && (
-                <Tag color="processing" style={{ marginLeft: 8 }}>已筛选</Tag>
-              )}
               <Text type="secondary" style={{ fontSize: 13 }}>
                 显示 {filteredHotels.length} 条 / 共 {pagination.total} 条
               </Text>
             </Flex>
-            <Button
-              icon={<ReloadOutlined />}
-              onClick={() => fetchHotels(pagination.current, pagination.pageSize)}
-              loading={loading}
-            >
+            <Button icon={<ReloadOutlined />} onClick={() => fetchHotels()} loading={loading}>
               刷新
             </Button>
           </Flex>
@@ -742,7 +728,7 @@ const HotelList: React.FC = () => {
             onChange={handleTableChange}
             scroll={{ x: 1300 }}
             rowClassName={(record) => 
-              record.status === 'pending' ? 'row-pending' : ''
+              record.review_status === 'pending' ? 'row-pending' : ''
             }
             locale={{
               emptyText: (
@@ -763,11 +749,7 @@ const HotelList: React.FC = () => {
                           立即添加
                         </Button>
                       ) : (
-                        <Button
-                          icon={<ReloadOutlined />}
-                          onClick={resetFilters}
-                          size="small"
-                        >
+                        <Button icon={<ReloadOutlined />} onClick={resetFilters} size="small">
                           清除筛选
                         </Button>
                       )}
@@ -780,7 +762,6 @@ const HotelList: React.FC = () => {
         </Flex>
       </TableCard>
 
-      {/* 全局样式 */}
       <style>{`
         .row-pending {
           background: rgba(250, 173, 20, 0.02);
@@ -791,9 +772,6 @@ const HotelList: React.FC = () => {
         .ant-table-row:hover {
           transform: translateY(-1px);
           box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-        }
-        .ant-select-dropdown .ant-flex {
-          padding: 5px 0;
         }
       `}</style>
     </PageContainer>

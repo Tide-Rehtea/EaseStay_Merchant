@@ -1,3 +1,4 @@
+// HotelEdit.tsx
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
@@ -9,22 +10,26 @@ import {
   Button,
   Flex,
   Space,
-  Divider,
   Alert,
+  Tag,
 } from 'antd';
 import { 
   EditOutlined,
   ArrowLeftOutlined,
   PlusOutlined,
+  CheckCircleOutlined,
+  CloseCircleOutlined,
+  ClockCircleOutlined,
+  PauseCircleOutlined,
+  PlayCircleOutlined,
 } from '@ant-design/icons';
 import styled from 'styled-components';
 import HotelForm from '@/components/HotelForm/HotelForm';
 import { api } from '@/api';
-import type { ReqHotelCreate } from '@/api/types';
+import type { ReqHotelCreate, ResHotel } from '@/api/types';
 
 const { Title, Text } = Typography;
 
-// 样式组件 - 优化滚动和布局
 const PageContainer = styled.div`
   display: flex;
   flex-direction: column;
@@ -62,31 +67,24 @@ const LoadingContainer = styled.div`
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 `;
 
-const StatusBadge = styled.div<{ status: string }>`
-  display: inline-flex;
-  align-items: center;
+const StatusTagGroup = styled(Flex)`
+  gap: 8px;
+`;
+
+const StatusTag = styled(Tag)<{ $type: 'review' | 'publish' }>`
   padding: 4px 12px;
   border-radius: 20px;
   font-size: 12px;
   font-weight: 500;
-  background: ${props => 
-    props.status === 'pending' ? '#fff7e6' :
-    props.status === 'approved' ? '#f6ffed' :
-    props.status === 'rejected' ? '#fff2f0' :
-    '#f5f5f5'
-  };
-  color: ${props => 
-    props.status === 'pending' ? '#fa8c16' :
-    props.status === 'approved' ? '#52c41a' :
-    props.status === 'rejected' ? '#f5222d' :
-    '#8c8c8c'
-  };
-  border: 1px solid ${props => 
-    props.status === 'pending' ? '#ffd591' :
-    props.status === 'approved' ? '#b7eb8f' :
-    props.status === 'rejected' ? '#ffccc7' :
-    '#d9d9d9'
-  };
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+`;
+
+const PublishStatusTag = styled(StatusTag)<{ $status: 'published' | 'unpublished' }>`
+  background: ${props => props.$status === 'published' ? '#f6ffed' : '#f5f5f5'};
+  color: ${props => props.$status === 'published' ? '#52c41a' : '#8c8c8c'};
+  border: 1px solid ${props => props.$status === 'published' ? '#b7eb8f' : '#d9d9d9'};
 `;
 
 const HotelEdit: React.FC = () => {
@@ -96,7 +94,7 @@ const HotelEdit: React.FC = () => {
   
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(isEdit);
-  const [hotelData, setHotelData] = useState<any>(null);
+  const [hotelData, setHotelData] = useState<ResHotel | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   // 获取酒店详情（编辑模式）
@@ -128,14 +126,13 @@ const HotelEdit: React.FC = () => {
     setLoading(true);
     try {
       if (isEdit && id) {
-        // 更新酒店
+        // 更新酒店 - 保留原有的发布状态
         await api.hotel.update(parseInt(id), values);
         message.success({
-          content: '酒店信息更新成功！',
+          content: '酒店信息更新成功！修改后需要重新审核',
           icon: <EditOutlined />,
           duration: 3,
         });
-        // 跳转回列表页
         setTimeout(() => {
           navigate('/merchant/hotels');
         }, 1500);
@@ -147,7 +144,6 @@ const HotelEdit: React.FC = () => {
           icon: <PlusOutlined />,
           duration: 3,
         });
-        // 跳转到酒店列表
         setTimeout(() => {
           navigate('/merchant/hotels');
         }, 1500);
@@ -158,6 +154,36 @@ const HotelEdit: React.FC = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  // 获取状态标签
+  const getStatusTags = (hotel: ResHotel) => {
+    const reviewStatusMap = {
+      pending: { color: 'warning', icon: <ClockCircleOutlined />, text: '待审核' },
+      approved: { color: 'success', icon: <CheckCircleOutlined />, text: '审核通过' },
+      rejected: { color: 'error', icon: <CloseCircleOutlined />, text: '已拒绝' },
+    };
+
+    const publishStatusMap = {
+      published: { icon: <PlayCircleOutlined />, text: '已发布' },
+      unpublished: { icon: <PauseCircleOutlined />, text: '未发布' },
+    };
+
+    const review = reviewStatusMap[hotel.review_status];
+    const publish = publishStatusMap[hotel.publish_status];
+
+    return (
+      <StatusTagGroup>
+        <StatusTag color={review.color} $type="review">
+          {review.icon}
+          {review.text}
+        </StatusTag>
+        <PublishStatusTag $type="publish" $status={hotel.publish_status}>
+          {publish.icon}
+          {publish.text}
+        </PublishStatusTag>
+      </StatusTagGroup>
+    );
   };
 
   if (fetching) {
@@ -194,10 +220,8 @@ const HotelEdit: React.FC = () => {
 
   return (
     <PageContainer>
-      {/* 页面头部 - 移除面包屑 */}
       <PageHeaderContainer>
         <Flex vertical gap={16}>
-          {/* 标题区域 */}
           <Flex justify="space-between" align="center">
             <Flex vertical gap={4}>
               <Title level={3} style={{ margin: 0, fontWeight: 600 }}>
@@ -205,26 +229,25 @@ const HotelEdit: React.FC = () => {
               </Title>
               <Text type="secondary" style={{ fontSize: 14 }}>
                 {isEdit 
-                  ? '修改您的酒店信息，更新后需要重新审核'
+                  ? '修改您的酒店信息，更新后需要重新审核，发布状态保持不变'
                   : '创建新的酒店信息，提交后等待审核'
                 }
               </Text>
             </Flex>
             
             {/* 状态标签（编辑模式） */}
-            {isEdit && hotelData?.status && (
-              <StatusBadge status={hotelData.status}>
-                当前状态：{
-                  hotelData.status === 'pending' ? '待审核' :
-                  hotelData.status === 'approved' ? '已通过' :
-                  hotelData.status === 'rejected' ? '已拒绝' :
-                  '已下线'
-                }
-              </StatusBadge>
+            {isEdit && hotelData && (
+              <Flex vertical align="flex-end" gap={4}>
+                {getStatusTags(hotelData)}
+                {hotelData.publish_status === 'published' && (
+                  <Text type="secondary" style={{ fontSize: 12 }}>
+                    修改后会自动下线，需重新审核通过后才能再次发布
+                  </Text>
+                )}
+              </Flex>
             )}
           </Flex>
 
-          {/* 操作按钮组 */}
           <Flex justify="space-between" align="center">
             <Button
               icon={<ArrowLeftOutlined />}
@@ -235,7 +258,7 @@ const HotelEdit: React.FC = () => {
               返回列表
             </Button>
             
-            {isEdit && hotelData?.status === 'rejected' && (
+            {isEdit && hotelData?.review_status === 'rejected' && (
               <Alert
                 message="审核未通过"
                 description={hotelData.reject_reason || '请修改酒店信息后重新提交审核'}
@@ -248,7 +271,6 @@ const HotelEdit: React.FC = () => {
         </Flex>
       </PageHeaderContainer>
       
-      {/* 表单内容 */}
       <ContentCard bordered={false}>
         <HotelForm
           initialValues={hotelData}

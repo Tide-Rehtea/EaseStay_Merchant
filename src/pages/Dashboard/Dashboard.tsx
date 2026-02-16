@@ -8,12 +8,10 @@ import {
   Col,
   Button,
   Space,
-  List,
   Avatar,
   Flex,
   Badge,
   Skeleton,
-  Statistic,
   Empty,
 } from "antd";
 import {
@@ -31,24 +29,25 @@ import {
   ApartmentOutlined,
   UserOutlined,
   AuditOutlined,
-  ShopOutlined,
   GlobalOutlined,
-  BarChartOutlined,
-  SettingOutlined,
   RiseOutlined,
   FallOutlined,
+  PlayCircleOutlined,
+  PauseCircleOutlined,
 } from "@ant-design/icons";
 import styled from "styled-components";
 import dayjs from "dayjs";
 import { api } from "@/api";
+import type { ResHotel } from "@/api/types";
 
 const { Title, Text } = Typography;
 
-// 样式组件（保持你原有的样式）
+// 样式组件
 const PageContainer = styled.div`
   display: flex;
   flex-direction: column;
   gap: 24px;
+  padding: 8px 0;
 `;
 
 const WelcomeCard = styled(Card)`
@@ -61,7 +60,12 @@ const WelcomeCard = styled(Card)`
     padding: 32px;
   }
 
-  h1, h2, h3, h4, h5, p {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  p {
     color: white;
     margin: 0;
   }
@@ -86,6 +90,7 @@ const StatCard = styled(Card)`
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
   transition: all 0.3s;
   border: 1px solid #f0f0f0;
+  text-align: center;
 
   &:hover {
     transform: translateY(-4px);
@@ -95,6 +100,9 @@ const StatCard = styled(Card)`
 
   .ant-card-body {
     padding: 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
   }
 
   .stat-icon {
@@ -112,6 +120,7 @@ const StatCard = styled(Card)`
     font-size: 32px;
     font-weight: 700;
     margin-bottom: 4px;
+    line-height: 1.4;
   }
 
   .stat-title {
@@ -126,6 +135,7 @@ const QuickActionCard = styled(Card)`
   transition: all 0.3s;
   cursor: pointer;
   border: 1px solid #f0f0f0;
+  height: 100%;
 
   &:hover {
     transform: translateY(-4px);
@@ -156,21 +166,29 @@ const QuickActionCard = styled(Card)`
     justify-content: center;
     font-size: 24px;
     transition: all 0.3s;
+    flex-shrink: 0;
   }
 
   .action-info {
     flex: 1;
+    min-width: 0;
 
     h4 {
       margin: 0 0 4px 0;
       font-size: 16px;
       font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     p {
       margin: 0;
       color: #8c8c8c;
       font-size: 13px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
   }
 `;
@@ -179,8 +197,8 @@ const SectionTitle = styled.div`
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 20px;
-  padding-top: 18px;
+  width: 100%;
+  padding: 4px 0;
 
   .left {
     display: flex;
@@ -196,6 +214,7 @@ const SectionTitle = styled.div`
       align-items: center;
       justify-content: center;
       color: #1890ff;
+      font-size: 18px;
     }
 
     h3 {
@@ -225,11 +244,48 @@ const HotelItem = styled.div`
   }
 `;
 
-const StatusBadge = styled(Badge)`
-  .ant-badge-status-dot {
-    width: 8px;
-    height: 8px;
-  }
+const StatusTag = styled.span<{ color: string }>`
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  background: ${(props) => {
+    switch (props.color) {
+      case "success":
+        return "#f6ffed";
+      case "warning":
+        return "#fff7e6";
+      case "error":
+        return "#fff2f0";
+      default:
+        return "#f5f5f5";
+    }
+  }};
+  color: ${(props) => {
+    switch (props.color) {
+      case "success":
+        return "#52c41a";
+      case "warning":
+        return "#fa8c16";
+      case "error":
+        return "#ff4d4f";
+      default:
+        return "#8c8c8c";
+    }
+  }};
+  border: 1px solid
+    ${(props) => {
+      switch (props.color) {
+        case "success":
+          return "#b7eb8f";
+        case "warning":
+          return "#ffd591";
+        case "error":
+          return "#ffccc7";
+        default:
+          return "#d9d9d9";
+      }
+    }};
 `;
 
 // 类型定义
@@ -238,53 +294,52 @@ interface MerchantStats {
   pending: number;
   approved: number;
   rejected: number;
-  offline: number;
+  published: number;
+  unpublished: number;
 }
 
 interface AdminStats {
   total_hotels: number;
-  pending_hotels: number;
-  approved_hotels: number;
-  total_merchants: number;
-}
-
-interface Hotel {
-  id: string;
-  name: string;
-  name_en?: string;
-  star: number;
-  price: number;
-  status: 'pending' | 'approved' | 'rejected' | 'offline';
-  images?: string[];
-  merchant?: {
-    id: number;
-    email: string;
+  review_stats: {
+    pending: number;
+    approved: number;
+    rejected: number;
   };
-  merchant_name?: string;
-  created_at: string;
-  updated_at: string;
+  publish_stats: {
+    published: number;
+    unpublished: number;
+  };
+  total_merchants: number;
 }
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
-  const [userRole, setUserRole] = useState<'admin' | 'merchant' | null>(null);
-  const [hotels, setHotels] = useState<Hotel[]>([]);
-  
+  const [userRole, setUserRole] = useState<"admin" | "merchant" | null>(null);
+  const [hotels, setHotels] = useState<ResHotel[]>([]);
+
   // 商户统计数据
   const [merchantStats, setMerchantStats] = useState<MerchantStats>({
     total: 0,
     pending: 0,
     approved: 0,
     rejected: 0,
-    offline: 0,
+    published: 0,
+    unpublished: 0,
   });
 
   // 管理员统计数据
   const [adminStats, setAdminStats] = useState<AdminStats>({
     total_hotels: 0,
-    pending_hotels: 0,
-    approved_hotels: 0,
+    review_stats: {
+      pending: 0,
+      approved: 0,
+      rejected: 0,
+    },
+    publish_stats: {
+      published: 0,
+      unpublished: 0,
+    },
     total_merchants: 0,
   });
 
@@ -292,16 +347,20 @@ const Dashboard: React.FC = () => {
   useEffect(() => {
     const userStr = localStorage.getItem("user");
     if (userStr) {
-      const user = JSON.parse(userStr);
-      setUserRole(user?.role || 'merchant');
+      try {
+        const user = JSON.parse(userStr);
+        setUserRole(user?.role || "merchant");
+      } catch (error) {
+        console.error("解析用户信息失败:", error);
+      }
     }
   }, []);
 
   // 获取数据
   useEffect(() => {
-    if (userRole === 'admin') {
+    if (userRole === "admin") {
       fetchAdminDashboardData();
-    } else if (userRole === 'merchant') {
+    } else if (userRole === "merchant") {
       fetchMerchantDashboardData();
     }
   }, [userRole]);
@@ -310,18 +369,27 @@ const Dashboard: React.FC = () => {
   const fetchMerchantDashboardData = async () => {
     setLoading(true);
     try {
-      // 调用 /api/hotels/my-hotels
-      const response = await api.hotel.getMyHotels({ page: 1, limit: 10 });
+      const response = await api.hotel.getMyHotels({ page: 1, limit: 100 });
       if (response.success) {
-        setHotels(response.data.hotels);
-        
         const hotels = response.data.hotels;
+        setHotels(hotels.slice(0, 10));
+
         setMerchantStats({
           total: response.data.pagination.total,
-          pending: hotels.filter((h: Hotel) => h.status === "pending").length,
-          approved: hotels.filter((h: Hotel) => h.status === "approved").length,
-          rejected: hotels.filter((h: Hotel) => h.status === "rejected").length,
-          offline: hotels.filter((h: Hotel) => h.status === "offline").length,
+          pending: hotels.filter((h: ResHotel) => h.review_status === "pending")
+            .length,
+          approved: hotels.filter(
+            (h: ResHotel) => h.review_status === "approved",
+          ).length,
+          rejected: hotels.filter(
+            (h: ResHotel) => h.review_status === "rejected",
+          ).length,
+          published: hotels.filter(
+            (h: ResHotel) => h.publish_status === "published",
+          ).length,
+          unpublished: hotels.filter(
+            (h: ResHotel) => h.publish_status === "unpublished",
+          ).length,
         });
       }
     } catch (error) {
@@ -336,10 +404,9 @@ const Dashboard: React.FC = () => {
     setLoading(true);
     try {
       // 并行获取多个数据
-      const [statsRes, hotelsRes, pendingRes] = await Promise.all([
-        api.admin.getStatistics(),           // GET /api/admin/statistics
-        api.admin.getAllHotels({ page: 1, limit: 10 }),  // GET /api/admin/hotels
-        api.admin.getPendingHotels({ page: 1, limit: 1 }), // GET /api/admin/hotels/pending
+      const [statsRes, hotelsRes] = await Promise.all([
+        api.admin.getStatistics(),
+        api.admin.getAllHotels({ page: 1, limit: 10 }),
       ]);
 
       if (statsRes.success) {
@@ -349,7 +416,6 @@ const Dashboard: React.FC = () => {
       if (hotelsRes.success) {
         setHotels(hotelsRes.data.hotels);
       }
-
     } catch (error) {
       console.error("获取管理员数据失败:", error);
     } finally {
@@ -372,15 +438,19 @@ const Dashboard: React.FC = () => {
   const getUsername = () => {
     const userStr = localStorage.getItem("user");
     if (userStr) {
-      const user = JSON.parse(userStr);
-      return user?.username || user?.email?.split("@")[0] || "用户";
+      try {
+        const user = JSON.parse(userStr);
+        return user?.username || user?.email?.split("@")[0] || "用户";
+      } catch (error) {
+        return "用户";
+      }
     }
     return "用户";
   };
 
   // 统计数据配置（根据角色不同）
   const getStatsConfig = () => {
-    if (userRole === 'admin') {
+    if (userRole === "admin") {
       return [
         {
           title: "平台酒店总数",
@@ -388,8 +458,6 @@ const Dashboard: React.FC = () => {
           icon: <GlobalOutlined />,
           color: "#1890ff",
           bgColor: "#e6f7ff",
-          trend: "+12%", // 可选：同比变化
-          trendIcon: <RiseOutlined />,
         },
         {
           title: "入驻商户",
@@ -397,22 +465,18 @@ const Dashboard: React.FC = () => {
           icon: <TeamOutlined />,
           color: "#52c41a",
           bgColor: "#f6ffed",
-          trend: "+5",
-          trendIcon: <RiseOutlined />,
         },
         {
           title: "待审核酒店",
-          value: adminStats.pending_hotels,
+          value: adminStats.review_stats.pending,
           icon: <ClockCircleOutlined />,
           color: "#fa8c16",
           bgColor: "#fff7e6",
-          trend: adminStats.pending_hotels > 0 ? "需处理" : "无待办",
-          trendIcon: adminStats.pending_hotels > 0 ? <FallOutlined /> : <CheckCircleOutlined />,
         },
         {
-          title: "已通过酒店",
-          value: adminStats.approved_hotels,
-          icon: <CheckCircleOutlined />,
+          title: "已发布酒店",
+          value: adminStats.publish_stats.published,
+          icon: <PlayCircleOutlined />,
           color: "#722ed1",
           bgColor: "#f9f0ff",
         },
@@ -436,32 +500,35 @@ const Dashboard: React.FC = () => {
         bgColor: "#fff7e6",
       },
       {
-        title: "已通过",
-        value: merchantStats.approved,
-        icon: <CheckCircleOutlined />,
+        title: "已发布",
+        value: merchantStats.published,
+        icon: <PlayCircleOutlined />,
         color: "#52c41a",
         bgColor: "#f6ffed",
       },
       {
-        title: "已拒绝/下线",
-        value: merchantStats.rejected + merchantStats.offline,
-        icon: <CloseCircleOutlined />,
-        color: "#ff4d4f",
-        bgColor: "#fff2f0",
+        title: "未发布",
+        value: merchantStats.unpublished,
+        icon: <PauseCircleOutlined />,
+        color: "#8c8c8c",
+        bgColor: "#f5f5f5",
       },
     ];
   };
 
-  // 快捷操作（根据角色不同）
+  // 快捷操作（根据角色不同）- 移除了系统设置
   const getQuickActions = () => {
-    if (userRole === 'admin') {
+    if (userRole === "admin") {
       return [
         {
           title: "审核酒店",
-          description: `${adminStats.pending_hotels} 个酒店待审核`,
+          description: `${adminStats.review_stats.pending} 个酒店待审核`,
           icon: <AuditOutlined />,
           path: "/admin/pending",
-          badge: adminStats.pending_hotels > 0 ? adminStats.pending_hotels : undefined,
+          badge:
+            adminStats.review_stats.pending > 0
+              ? adminStats.review_stats.pending
+              : undefined,
         },
         {
           title: "商户管理",
@@ -475,12 +542,6 @@ const Dashboard: React.FC = () => {
           icon: <GlobalOutlined />,
           path: "/admin/hotels",
         },
-        {
-          title: "系统设置",
-          description: "平台配置管理",
-          icon: <SettingOutlined />,
-          path: "/admin/settings",
-        },
       ];
     }
 
@@ -488,7 +549,7 @@ const Dashboard: React.FC = () => {
     return [
       {
         title: "添加新酒店",
-        description: "创建新的酒店信息，提交审核",
+        description: "创建新酒店信息，提交审核",
         icon: <PlusOutlined />,
         path: "/merchant/hotels/new",
       },
@@ -502,21 +563,27 @@ const Dashboard: React.FC = () => {
         title: "待审核酒店",
         description: `${merchantStats.pending} 个酒店等待审核`,
         icon: <ClockCircleOutlined />,
-        path: "/merchant/hotels?status=pending",
+        path: "/merchant/hotels?review_status=pending",
         badge: merchantStats.pending > 0 ? merchantStats.pending : undefined,
+      },
+      {
+        title: "已发布酒店",
+        description: `${merchantStats.published} 个酒店已发布`,
+        icon: <PlayCircleOutlined />,
+        path: "/merchant/hotels?publish_status=published",
       },
     ];
   };
 
   // 获取列表配置
   const getListConfig = () => {
-    if (userRole === 'admin') {
+    if (userRole === "admin") {
       return {
         title: "最近提交的酒店",
         viewAllPath: "/admin/hotels",
         viewItemPath: (id: string) => `/admin/hotels/${id}`,
         emptyText: "暂无酒店数据",
-        showMerchant: true, // 管理员列表显示商户信息
+        showMerchant: true,
       };
     }
     return {
@@ -526,6 +593,55 @@ const Dashboard: React.FC = () => {
       emptyText: "暂无酒店数据",
       showMerchant: false,
     };
+  };
+
+  // 获取状态显示 - 修复已发布状态显示问题
+  const getStatusDisplay = (hotel: ResHotel) => {
+    const statuses = [];
+
+    // 审核状态
+    if (hotel.review_status === "pending") {
+      statuses.push(
+        <StatusTag key="review" color="warning">
+          待审核
+        </StatusTag>,
+      );
+    } else if (hotel.review_status === "approved") {
+      statuses.push(
+        <StatusTag key="review" color="success">
+          审核通过
+        </StatusTag>,
+      );
+    } else if (hotel.review_status === "rejected") {
+      statuses.push(
+        <StatusTag key="review" color="error">
+          已拒绝
+        </StatusTag>,
+      );
+    }
+
+    // 发布状态 - 只有当审核通过时才显示发布状态
+    if (hotel.review_status === "approved") {
+      if (hotel.publish_status === "published") {
+        statuses.push(
+          <StatusTag key="publish" color="success">
+            已发布
+          </StatusTag>,
+        );
+      } else if (hotel.publish_status === "unpublished") {
+        statuses.push(
+          <StatusTag key="publish" color="default">
+            未发布
+          </StatusTag>,
+        );
+      }
+    }
+
+    return (
+      <Space size={[8, 0]} wrap>
+        {statuses}
+      </Space>
+    );
   };
 
   const statsConfig = getStatsConfig();
@@ -545,20 +661,19 @@ const Dashboard: React.FC = () => {
     <PageContainer>
       {/* 欢迎卡片 */}
       <WelcomeCard>
-        <Flex justify="space-between" align="center">
+        <Flex justify="space-between" align="center" wrap="wrap" gap={16}>
           <div>
             <Title level={2} style={{ color: "white", marginBottom: 8 }}>
               {getGreeting()}，{username}！
             </Title>
             <Text style={{ color: "rgba(255,255,255,0.85)", fontSize: 16 }}>
-              {userRole === 'admin' 
-                ? `欢迎回到管理后台，今日有 ${adminStats.pending_hotels} 个待审核项`
+              {userRole === "admin"
+                ? `欢迎回到管理后台，今日有 ${adminStats.review_stats.pending} 个待审核项`
                 : `欢迎回到易宿酒店管理后台${
-                    merchantStats.pending > 0 
-                      ? `，您有 ${merchantStats.pending} 个酒店正在等待审核` 
-                      : ''
-                  }`
-              }
+                    merchantStats.pending > 0
+                      ? `，您有 ${merchantStats.pending} 个酒店正在等待审核`
+                      : ""
+                  }`}
             </Text>
           </div>
           <div>
@@ -572,21 +687,32 @@ const Dashboard: React.FC = () => {
       {/* 快捷操作 */}
       <Row gutter={[24, 24]}>
         {quickActions.map((action, index) => (
-          <Col xs={24} sm={12} md={userRole === 'admin' ? 6 : 8} key={index}>
-            <Badge.Ribbon 
-              text={action.badge} 
-              color="red" 
-              style={{ display: action.badge ? 'block' : 'none' }}
-            >
+          <Col xs={24} sm={12} md={userRole === "admin" ? 8 : 6} key={index}>
+            {action.badge ? (
+              <Badge.Ribbon text={action.badge} color="red">
+                <QuickActionCard onClick={() => navigate(action.path)}>
+                  <div className="action-icon">{action.icon}</div>
+                  <div className="action-info">
+                    <h4>{action.title}</h4>
+                    <p>{action.description}</p>
+                  </div>
+                  <ArrowRightOutlined
+                    style={{ color: "#d9d9d9", flexShrink: 0 }}
+                  />
+                </QuickActionCard>
+              </Badge.Ribbon>
+            ) : (
               <QuickActionCard onClick={() => navigate(action.path)}>
                 <div className="action-icon">{action.icon}</div>
                 <div className="action-info">
                   <h4>{action.title}</h4>
                   <p>{action.description}</p>
                 </div>
-                <ArrowRightOutlined style={{ color: "#d9d9d9" }} />
+                <ArrowRightOutlined
+                  style={{ color: "#d9d9d9", flexShrink: 0 }}
+                />
               </QuickActionCard>
-            </Badge.Ribbon>
+            )}
           </Col>
         ))}
       </Row>
@@ -603,260 +729,118 @@ const Dashboard: React.FC = () => {
             </div>
             <div className="stat-value">{stat.value}</div>
             <div className="stat-title">{stat.title}</div>
-            {stat.trend && (
-              <div style={{ marginTop: 8, fontSize: 12, color: '#8c8c8c' }}>
-                <span style={{ color: stat.trendIcon?.type === RiseOutlined ? '#52c41a' : '#ff4d4f' }}>
-                  {stat.trendIcon}
-                </span>
-                <span style={{ marginLeft: 4 }}>{stat.trend}</span>
-              </div>
-            )}
           </StatCard>
         ))}
       </StatsGrid>
 
-      {/* 内容区域 */}
-      <Row gutter={24}>
-        {/* 最近更新的酒店 */}
-        <Col xs={24} lg={userRole === 'admin' ? 24 : 16}>
-          <Card
-            title={
-              <SectionTitle>
-                <div className="left">
-                  <div className="icon">
-                    <ApartmentOutlined />
-                  </div>
-                  <h3>{listConfig.title}</h3>
-                </div>
-                {hotels.length > 0 && (
-                  <Button
-                    type="link"
-                    onClick={() => navigate(listConfig.viewAllPath)}
-                  >
-                    查看全部 <ArrowRightOutlined />
-                  </Button>
-                )}
-              </SectionTitle>
-            }
-            bordered={false}
-            style={{ borderRadius: 16 }}
-          >
-            {hotels.length > 0 ? (
-              hotels.slice(0, 5).map((hotel) => (
-                <HotelItem
-                  key={hotel.id}
-                  onClick={() => navigate(listConfig.viewItemPath(hotel.id))}
-                >
-                  <Flex justify="space-between" align="center">
-                    <Flex gap={12} align="center">
-                      <Avatar
-                        size={48}
-                        shape="square"
-                        src={
-                          hotel.images?.[0]
-                            ? hotel.images[0].startsWith("http")
-                              ? hotel.images[0]
-                              : `http://localhost:3001${hotel.images[0]}`
-                            : null
-                        }
-                        icon={!hotel.images?.[0] && <ApartmentOutlined />}
-                        style={{ borderRadius: 8 }}
-                      />
-                      <div>
-                        <div
-                          style={{ fontWeight: 600, marginBottom: 4 }}
-                          className="hotel-name"
-                        >
-                          {hotel.name}
-                        </div>
-                        <Space size={16} wrap>
-                          {listConfig.showMerchant && hotel.merchant && (
-                            <Text type="secondary" style={{ fontSize: 12 }}>
-                              <UserOutlined style={{ marginRight: 4 }} />
-                              {hotel.merchant.email}
-                            </Text>
-                          )}
-                          <Text type="secondary" style={{ fontSize: 12 }}>
-                            <StarOutlined style={{ marginRight: 4, color: "#faad14" }} />
-                            {hotel.star}星
-                          </Text>
-                          <Text type="secondary" style={{ fontSize: 12 }}>
-                            <DollarOutlined style={{ marginRight: 4, color: "#ff4d4f" }} />
-                            ¥{hotel.price}/晚起
-                          </Text>
-                          <Text type="secondary" style={{ fontSize: 12 }}>
-                            <CalendarOutlined style={{ marginRight: 4 }} />
-                            {dayjs(hotel.updated_at).format("MM-DD")}
-                          </Text>
-                        </Space>
-                      </div>
-                    </Flex>
-                    <Space>
-                      <StatusBadge
-                        status={
-                          hotel.status === "pending"
-                            ? "warning"
-                            : hotel.status === "approved"
-                              ? "success"
-                              : hotel.status === "rejected"
-                                ? "error"
-                                : "default"
-                        }
-                        text={
-                          <span
-                            style={{
-                              color:
-                                hotel.status === "pending"
-                                  ? "#fa8c16"
-                                  : hotel.status === "approved"
-                                    ? "#52c41a"
-                                    : hotel.status === "rejected"
-                                      ? "#ff4d4f"
-                                      : "#8c8c8c",
-                              fontSize: 12,
-                            }}
-                          >
-                            {hotel.status === "pending"
-                              ? "待审核"
-                              : hotel.status === "approved"
-                                ? "已通过"
-                                : hotel.status === "rejected"
-                                  ? "已拒绝"
-                                  : "已下线"}
-                          </span>
-                        }
-                      />
-                      <Button type="text" size="small" icon={<EyeOutlined />} />
-                    </Space>
-                  </Flex>
-                </HotelItem>
-              ))
-            ) : (
-              <Empty
-                image={Empty.PRESENTED_IMAGE_SIMPLE}
-                description={listConfig.emptyText}
+      {/* 最近更新的酒店列表 */}
+      <Card
+        title={
+          <SectionTitle>
+            <div className="left">
+              <div className="icon">
+                <ApartmentOutlined />
+              </div>
+              <h3>{listConfig.title}</h3>
+            </div>
+            {hotels.length > 0 && (
+              <Button
+                type="link"
+                onClick={() => navigate(listConfig.viewAllPath)}
               >
-                {userRole === 'merchant' && (
-                  <Button
-                    type="primary"
-                    onClick={() => navigate("/merchant/hotels/new")}
-                    icon={<PlusOutlined />}
-                  >
-                    立即添加酒店
-                  </Button>
-                )}
-              </Empty>
+                查看全部 <ArrowRightOutlined />
+              </Button>
             )}
-          </Card>
-        </Col>
-
-        {/* 右侧信息 - 只对商户显示 */}
-        {userRole === 'merchant' && (
-          <Col xs={24} lg={8}>
-            {/* 审核状态说明 */}
-            <Card
-              title={
-                <SectionTitle>
-                  <div className="left">
-                    <div className="icon">
-                      <AuditOutlined />
-                    </div>
-                    <h3>审核状态说明</h3>
-                  </div>
-                </SectionTitle>
+          </SectionTitle>
+        }
+        bordered={false}
+        style={{ borderRadius: 16 }}
+      >
+        {hotels.length > 0 ? (
+          hotels.slice(0, 5).map((hotel) => (
+            <HotelItem
+              key={hotel.id}
+              onClick={() =>
+                navigate(listConfig.viewItemPath(String(hotel.id)))
               }
-              bordered={false}
-              style={{ borderRadius: 16 }}
             >
-              <List
-                itemLayout="horizontal"
-                dataSource={[
-                  {
-                    status: "待审核",
-                    color: "warning",
-                    icon: <ClockCircleOutlined />,
-                    desc: "酒店已提交，等待管理员审核",
-                  },
-                  {
-                    status: "已通过",
-                    color: "success",
-                    icon: <CheckCircleOutlined />,
-                    desc: "审核通过，酒店已上线",
-                  },
-                  {
-                    status: "已拒绝",
-                    color: "error",
-                    icon: <CloseCircleOutlined />,
-                    desc: "审核未通过，请查看拒绝原因",
-                  },
-                  {
-                    status: "已下线",
-                    color: "default",
-                    icon: <EyeOutlined />,
-                    desc: "酒店已下线，可重新提交",
-                  },
-                ]}
-                renderItem={(item) => (
-                  <List.Item>
-                    <List.Item.Meta
-                      avatar={
-                        <Avatar
-                          icon={item.icon}
-                          style={{
-                            background:
-                              item.color === "warning"
-                                ? "#fff7e6"
-                                : item.color === "success"
-                                  ? "#f6ffed"
-                                  : item.color === "error"
-                                    ? "#fff2f0"
-                                    : "#f5f5f5",
-                            color:
-                              item.color === "warning"
-                                ? "#fa8c16"
-                                : item.color === "success"
-                                  ? "#52c41a"
-                                  : item.color === "error"
-                                    ? "#ff4d4f"
-                                    : "#8c8c8c",
-                          }}
-                        />
-                      }
-                      title={item.status}
-                      description={item.desc}
-                    />
-                  </List.Item>
-                )}
-              />
-            </Card>
-
-            {/* 快捷帮助卡片 - 商户专用 */}
-            <Card 
-              style={{ marginTop: 24, borderRadius: 16 }}
-              bordered={false}
-            >
-              <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-                <div>
-                  <Title level={5}>💡 使用提示</Title>
-                  <Text type="secondary">
-                    • 提交酒店后需要等待管理员审核<br />
-                    • 审核通过后酒店才会在用户端显示<br />
-                    • 修改酒店信息后会重新进入审核状态
-                  </Text>
-                </div>
-                <Button 
-                  type="primary" 
-                  block 
-                  icon={<PlusOutlined />}
-                  onClick={() => navigate("/merchant/hotels/new")}
+              <Flex justify="space-between" align="center" wrap="wrap" gap={16}>
+                <Flex
+                  gap={12}
+                  align="center"
+                  style={{ minWidth: 200, flex: 1 }}
                 >
-                  快速添加酒店
-                </Button>
-              </Space>
-            </Card>
-          </Col>
+                  <Avatar
+                    size={48}
+                    shape="square"
+                    src={
+                      hotel.images?.[0]
+                        ? hotel.images[0].startsWith("http")
+                          ? hotel.images[0]
+                          : `http://localhost:3001${hotel.images[0]}`
+                        : null
+                    }
+                    icon={!hotel.images?.[0] && <ApartmentOutlined />}
+                    style={{ borderRadius: 8, flexShrink: 0 }}
+                  />
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div
+                      style={{ fontWeight: 600, marginBottom: 4 }}
+                      className="hotel-name"
+                    >
+                      {hotel.name}
+                    </div>
+                    <Space size={[16, 8]} wrap>
+                      {listConfig.showMerchant && hotel.merchant && (
+                        <Text type="secondary" style={{ fontSize: 12 }}>
+                          <UserOutlined style={{ marginRight: 4 }} />
+                          {hotel.merchant.email}
+                        </Text>
+                      )}
+                      <Text type="secondary" style={{ fontSize: 12 }}>
+                        <StarOutlined
+                          style={{ marginRight: 4, color: "#faad14" }}
+                        />
+                        {hotel.star}星
+                      </Text>
+                      <Text type="secondary" style={{ fontSize: 12 }}>
+                        <DollarOutlined
+                          style={{ marginRight: 4, color: "#ff4d4f" }}
+                        />
+                        ¥{hotel.price}/晚起
+                      </Text>
+                      <Text type="secondary" style={{ fontSize: 12 }}>
+                        <CalendarOutlined style={{ marginRight: 4 }} />
+                        {dayjs(hotel.updated_at).format("MM-DD")}
+                      </Text>
+                    </Space>
+                  </div>
+                </Flex>
+                <Flex align="center" gap={8} style={{ flexShrink: 0 }}>
+                  {getStatusDisplay(hotel)}
+                  <Button type="text" size="small" icon={<EyeOutlined />} />
+                </Flex>
+              </Flex>
+            </HotelItem>
+          ))
+        ) : (
+          <Empty
+            image={Empty.PRESENTED_IMAGE_SIMPLE}
+            description={listConfig.emptyText}
+            style={{ margin: "32px 0" }}
+          >
+            {userRole === "merchant" && (
+              <Button
+                type="primary"
+                onClick={() => navigate("/merchant/hotels/new")}
+                icon={<PlusOutlined />}
+              >
+                立即添加酒店
+              </Button>
+            )}
+          </Empty>
         )}
-      </Row>
+      </Card>
     </PageContainer>
   );
 };

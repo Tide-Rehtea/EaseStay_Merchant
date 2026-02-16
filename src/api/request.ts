@@ -26,6 +26,7 @@ request.interceptors.request.use(
 // 响应拦截器
 request.interceptors.response.use(
   (response) => {
+    console.log(response.config.url, '接口返回数据：', response.data.data);
     const data = response.data;
     
     // 检查业务错误

@@ -17,6 +17,7 @@ const PendingReview = React.lazy(() => import('./pages/PendingReview/PendingRevi
 const AllHotels = React.lazy(() => import('./pages/AllHotels/AllHotels'));
 const NotFound = React.lazy(() => import('./pages/NotFound/NotFound'));
 const HotelView = React.lazy(() => import('./pages/HotelView/HotelView'));
+const HotelViewAdmin = React.lazy(() => import('./pages/HotelView/HotelViewAdmin'));
 
 // Layout组件
 const AdminLayout = React.lazy(() => import('./components/Layout/AdminLayout'));
@@ -178,6 +179,14 @@ function App() {
                   <RoleGuard role="admin">
                     <React.Suspense fallback={<LoadingFallback />}>
                       <AllHotels />
+                    </React.Suspense>
+                  </RoleGuard>
+                } />
+
+                <Route path="admin/hotels/:id" element={
+                  <RoleGuard role="admin">
+                    <React.Suspense fallback={<LoadingFallback />}>
+                      <HotelViewAdmin />
                     </React.Suspense>
                   </RoleGuard>
                 } />
