@@ -504,13 +504,6 @@ const Register: React.FC = () => {
           </div>
         </Form>
 
-        {/* 测试功能按钮 */}
-        <div style={{ marginTop: 24, textAlign: "center" }}>
-          <Button type="link" size="small" onClick={fillTestAccount}>
-            快速填充测试数据
-          </Button>
-        </div>
-
         <LoginLink>
           已有账号？
           <Link to="/login">立即登录</Link>

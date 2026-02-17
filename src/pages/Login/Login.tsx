@@ -110,7 +110,7 @@ const Login: React.FC = () => {
         if (user.role === 'admin') {
           navigate('/dashboard', { replace: true });
         } else {
-          navigate('/merchant/hotels', { replace: true });
+          navigate('/dashboard', { replace: true });
         }
       }
     } catch (error: any) {
@@ -218,45 +218,6 @@ const Login: React.FC = () => {
               {loading ? '登录中...' : '登录'}
             </Button>
           </Form.Item>
-
-          <Divider plain>或</Divider>
-
-          <Space direction="vertical" style={{ width: '100%' }}>
-            <Button
-              icon={<GoogleOutlined />}
-              block
-              onClick={() => message.info('Google登录功能开发中')}
-            >
-              使用 Google 登录
-            </Button>
-            <Button
-              icon={<GithubOutlined />}
-              block
-              onClick={() => message.info('GitHub登录功能开发中')}
-            >
-              使用 GitHub 登录
-            </Button>
-          </Space>
-
-          <Alert
-            message="测试账号"
-            description={
-              <Space direction="vertical" size="small" style={{ width: '100%', marginTop: 8 }}>
-                <Text type="secondary">点击快速填充：</Text>
-                <Space>
-                  <Button size="small" onClick={() => fillTestAccount('merchant')}>
-                    商户账号
-                  </Button>
-                  <Button size="small" onClick={() => fillTestAccount('admin')}>
-                    管理员账号
-                  </Button>
-                </Space>
-              </Space>
-            }
-            type="info"
-            showIcon
-            style={{ marginTop: 24 }}
-          />
         </Form>
 
         <RegisterLink>

@@ -1,4 +1,3 @@
-// Dashboard.tsx
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -516,7 +515,7 @@ const Dashboard: React.FC = () => {
     ];
   };
 
-  // 快捷操作（根据角色不同）- 移除了系统设置
+  // 快捷操作（根据角色不同）- 移除了商户管理
   const getQuickActions = () => {
     if (userRole === "admin") {
       return [
@@ -529,12 +528,6 @@ const Dashboard: React.FC = () => {
             adminStats.review_stats.pending > 0
               ? adminStats.review_stats.pending
               : undefined,
-        },
-        {
-          title: "商户管理",
-          description: `共 ${adminStats.total_merchants} 个入驻商户`,
-          icon: <TeamOutlined />,
-          path: "/admin/merchants",
         },
         {
           title: "所有酒店",
@@ -687,7 +680,7 @@ const Dashboard: React.FC = () => {
       {/* 快捷操作 */}
       <Row gutter={[24, 24]}>
         {quickActions.map((action, index) => (
-          <Col xs={24} sm={12} md={userRole === "admin" ? 8 : 6} key={index}>
+          <Col xs={24} sm={12} md={userRole === "admin" ? 12 : 6} key={index}>
             {action.badge ? (
               <Badge.Ribbon text={action.badge} color="red">
                 <QuickActionCard onClick={() => navigate(action.path)}>

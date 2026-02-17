@@ -1,4 +1,3 @@
-// PendingReview.tsx
 import React, { useState, useEffect } from 'react';
 import {
   Card,
@@ -14,9 +13,10 @@ import {
   message,
   Tooltip,
   Badge,
-  Popconfirm,
   Flex,
   Rate,
+  Divider,
+  Input as SearchInput,
 } from 'antd';
 import {
   CheckCircleOutlined,
@@ -27,16 +27,89 @@ import {
   BankOutlined,
   DollarOutlined,
   CalendarOutlined,
+  FilterOutlined,
+  ReloadOutlined,
+  SearchOutlined,
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import { useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
 import { api } from '@/api';
-// 修改导入：使用 ResHotel 而不是 Hotel
 import type { ResHotel } from '@/api/types';
+import styled from 'styled-components';
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;
+
+// 样式组件
+const PageContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+`;
+
+const PageHeaderContainer = styled.div`
+  background: #fff;
+  padding: 24px;
+  border-radius: 12px;
+  box-shadow: 0 1px 4px 0 rgba(0, 0, 0, 0.04);
+  transition: all 0.3s ease;
+  
+  &:hover {
+    box-shadow: 0 2px 8px 0 rgba(0, 0, 0, 0.06);
+  }
+`;
+
+const FilterCard = styled(Card)`
+  border-radius: 12px;
+  box-shadow: 0 1px 4px 0 rgba(0, 0, 0, 0.04);
+  
+  .ant-card-body {
+    padding: 20px;
+  }
+`;
+
+const TableCard = styled(Card)`
+  border-radius: 12px;
+  box-shadow: 0 1px 4px 0 rgba(0, 0, 0, 0.04);
+  
+  .ant-card-body {
+    padding: 20px;
+  }
+`;
+
+const ActionButton = styled(Button)`
+  padding: 4px 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  
+  &:hover {
+    transform: translateY(-1px);
+  }
+  
+  &:active {
+    transform: translateY(0);
+  }
+`;
+
+// 文字省略样式组件
+const EllipsisText = styled(Text)`
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+`;
+
+const EllipsisDiv = styled.div`
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+`;
 
 // 待审核酒店列表响应类型 - 直接使用 ResHotel
 interface PendingHotel extends ResHotel {
@@ -51,6 +124,7 @@ const PendingReview: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
+  const [searchText, setSearchText] = useState('');
   
   // 拒绝弹窗
   const [rejectModalVisible, setRejectModalVisible] = useState(false);
@@ -170,12 +244,25 @@ const PendingReview: React.FC = () => {
     return path.startsWith('http') ? path : `http://localhost:3001${path}`;
   };
 
-  // 表格列定义
+  // 搜索过滤
+  const filteredData = data.filter(hotel => {
+    if (!searchText) return true;
+    const searchLower = searchText.toLowerCase();
+    return (
+      hotel.name?.toLowerCase().includes(searchLower) ||
+      hotel.name_en?.toLowerCase().includes(searchLower) ||
+      hotel.address?.toLowerCase().includes(searchLower) ||
+      hotel.merchant?.email?.toLowerCase().includes(searchLower)
+    );
+  });
+
+  // 表格列定义 - 调整列宽比例
   const columns: ColumnsType<PendingHotel> = [
     {
       title: '酒店信息',
       key: 'hotelInfo',
-      width: 300,
+      width: 320,
+      fixed: 'left',
       render: (_, record) => (
         <Flex gap={12} align="flex-start">
           <Avatar
@@ -183,28 +270,28 @@ const PendingReview: React.FC = () => {
             size={64}
             src={getImageUrl(record.images?.[0] || '')}
             icon={!record.images?.length && <BankOutlined />}
-            style={{ borderRadius: 8 }}
+            style={{ borderRadius: 8, flexShrink: 0 }}
           />
-          <div>
-            <div style={{ fontWeight: 600, marginBottom: 4 }}>
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <EllipsisDiv style={{ fontWeight: 600, marginBottom: 4 }}>
               {record.name}
               {record.name_en && (
                 <Text type="secondary" style={{ marginLeft: 8, fontSize: 12 }}>
                   {record.name_en}
                 </Text>
               )}
-            </div>
+            </EllipsisDiv>
             <Space size={4} wrap style={{ marginBottom: 4 }}>
-              <Rate disabled defaultValue={record.star} count={5} style={{ fontSize: 12 }} />
-              <Tag color="blue" icon={<DollarOutlined />}>
+              <Rate disabled defaultValue={record.star} count={5} style={{ fontSize: 12, flexShrink: 0 }} />
+              <Tag color="blue" icon={<DollarOutlined />} style={{ flexShrink: 0 }}>
                 ¥{record.price}起
               </Tag>
             </Space>
-            <div>
-              <Text type="secondary" style={{ fontSize: 12 }}>
+            <Tooltip title={record.address}>
+              <EllipsisText type="secondary" style={{ fontSize: 12 }}>
                 {record.address}
-              </Text>
-            </div>
+              </EllipsisText>
+            </Tooltip>
           </div>
         </Flex>
       ),
@@ -212,68 +299,81 @@ const PendingReview: React.FC = () => {
     {
       title: '商户信息',
       key: 'merchant',
-      width: 200,
+      width: 150,
       render: (_, record) => (
-        <Space direction="vertical" size={2}>
-          <Text>
-            <UserOutlined style={{ marginRight: 4, color: '#1890ff' }} />
-            {record.merchant?.email || '未知商户'}
-          </Text>
-          <Text type="secondary" style={{ fontSize: 12 }}>
-            <CalendarOutlined style={{ marginRight: 4 }} />
-            提交: {dayjs(record.created_at).format('YYYY-MM-DD HH:mm')}
-          </Text>
+        <Space direction="vertical" size={2} style={{ width: '100%' }}>
+          <Tooltip title={record.merchant?.email || '未知商户'}>
+            <EllipsisText>
+              <UserOutlined style={{ marginRight: 4, color: '#1890ff' }} />
+              {record.merchant?.email || '未知商户'}
+            </EllipsisText>
+          </Tooltip>
+          <Tooltip title={`提交: ${dayjs(record.created_at).format('YYYY-MM-DD HH:mm')}`}>
+            <EllipsisText type="secondary" style={{ fontSize: 12 }}>
+              <CalendarOutlined style={{ marginRight: 4 }} />
+              提交: {dayjs(record.created_at).format('YYYY-MM-DD HH:mm')}
+            </EllipsisText>
+          </Tooltip>
         </Space>
       ),
     },
     {
       title: '房型信息',
       key: 'roomType',
-      width: 200,
+      width: 130,
       render: (_, record) => {
         const roomTypes = record.room_type as any[];
         if (!roomTypes?.length) return <Text type="secondary">暂无房型</Text>;
         
         return (
-          <Space direction="vertical" size={2}>
-            {roomTypes.slice(0, 2).map((room, index) => (
-              <div key={index}>
-                <Text strong>{room.type}</Text>
-                <Text type="secondary" style={{ marginLeft: 8 }}>
-                  ¥{room.price}
-                </Text>
-              </div>
+          <Space direction="vertical" size={2} style={{ width: '100%' }}>
+            {roomTypes.slice(0, 1).map((room, index) => (
+              <Tooltip key={index} title={`${room.type} - ¥${room.price}`}>
+                <EllipsisText>
+                  <Text strong>{room.type}</Text>
+                  <Text type="secondary" style={{ marginLeft: 4 }}>
+                    ¥{room.price}
+                  </Text>
+                </EllipsisText>
+              </Tooltip>
             ))}
-            {roomTypes.length > 2 && (
-              <Text type="secondary">等{roomTypes.length}个房型</Text>
+            {roomTypes.length > 1 && (
+              <Tooltip title={`等${roomTypes.length}个房型`}>
+                <EllipsisText type="secondary">
+                  +{roomTypes.length - 1}个房型
+                </EllipsisText>
+              </Tooltip>
             )}
           </Space>
         );
       },
     },
     {
-      title: '标签/设施',
+      title: '标签',
       key: 'tags',
-      width: 200,
-      render: (_, record) => (
-        <Space direction="vertical" size={2}>
-          {record.tags && record.tags.length > 0 && (
+      width: 130,
+      render: (_, record) => {
+        const tags = record.tags || [];
+        
+        if (tags.length === 0) {
+          return <Text type="secondary">暂无标签</Text>;
+        }
+        
+        return (
+          <Tooltip title={tags.join('、')}>
             <div>
-              {record.tags.slice(0, 3).map((tag: string) => (
-                <Tag key={tag} color="blue" style={{ marginBottom: 4 }}>
-                  {tag}
+              {tags.slice(0, 2).map((tag: string) => (
+                <Tag key={tag} color="blue" style={{ marginBottom: 4, maxWidth: '100%' }}>
+                  <EllipsisDiv style={{ maxWidth: 80 }}>{tag}</EllipsisDiv>
                 </Tag>
               ))}
+              {tags.length > 2 && (
+                <Tag color="default">+{tags.length - 2}</Tag>
+              )}
             </div>
-          )}
-          {record.facilities && record.facilities.length > 0 && (
-            <Text type="secondary" style={{ fontSize: 12 }}>
-              {record.facilities.slice(0, 3).join(' · ')}
-              {record.facilities.length > 3 && ' 等'}
-            </Text>
-          )}
-        </Space>
-      ),
+          </Tooltip>
+        );
+      },
     },
     {
       title: '操作',
@@ -281,112 +381,199 @@ const PendingReview: React.FC = () => {
       width: 200,
       fixed: 'right',
       render: (_, record) => (
-        <Space direction="vertical" size={8}>
-          <Space>
-            <Button
-              type="primary"
-              icon={<CheckCircleOutlined />}
-              size="small"
-              onClick={() => handleApprove(record.id)}
-            >
-              通过
-            </Button>
-            <Button
-              danger
-              icon={<CloseCircleOutlined />}
-              size="small"
-              onClick={() => handleReject(record)}
-            >
-              拒绝
-            </Button>
-          </Space>
-          <Space>
-            <Button
-              type="link"
-              icon={<EyeOutlined />}
-              size="small"
-              onClick={() => navigate(`/admin/hotels/${record.id}`)}
-            >
-              详情
-            </Button>
-          </Space>
+        <Space size={4}>
+          <ActionButton
+            type="text"
+            icon={<CheckCircleOutlined style={{ color: '#52c41a' }} />}
+            onClick={() => handleApprove(record.id)}
+            size="small"
+          >
+            通过
+          </ActionButton>
+          <ActionButton
+            type="text"
+            icon={<CloseCircleOutlined style={{ color: '#ff4d4f' }} />}
+            onClick={() => handleReject(record)}
+            size="small"
+          >
+            拒绝
+          </ActionButton>
+          <ActionButton
+            type="text"
+            icon={<EyeOutlined />}
+            onClick={() => navigate(`/admin/hotels/${record.id}`)}
+            size="small"
+          >
+            详情
+          </ActionButton>
         </Space>
       ),
     },
   ];
 
   return (
-    <div>
+    <PageContainer>
       {/* 页面标题 */}
-      <div style={{ marginBottom: 24 }}>
-        <Title level={2} style={{ margin: 0 }}>
-          待审核酒店
-        </Title>
-        <Text type="secondary">共有 {total} 个酒店等待审核</Text>
-      </div>
+      <PageHeaderContainer>
+        <Flex vertical gap="small">
+          <Flex justify="space-between" align="center">
+            <Flex vertical gap={4}>
+              <Title level={3} style={{ margin: 0, fontWeight: 600 }}>
+                待审核酒店
+              </Title>
+              <Text type="secondary" style={{ fontSize: 14 }}>
+                共有 {total} 个酒店等待审核
+              </Text>
+            </Flex>
+          </Flex>
+        </Flex>
+      </PageHeaderContainer>
 
       {/* 操作栏 */}
-      <Card style={{ marginBottom: 16, borderRadius: 12 }} bodyStyle={{ padding: '16px 24px' }}>
-        <Flex justify="space-between" align="center">
-          <Space>
-            <Badge count={selectedRowKeys.length} offset={[-5, 5]}>
-              <Button
-                type="primary"
-                icon={<CheckCircleOutlined />}
-                onClick={handleBatchApprove}
-                disabled={selectedRowKeys.length === 0}
+      <FilterCard>
+        <Flex vertical gap={16}>
+          <Flex align="center" justify="space-between">
+            <Flex align="center" gap={8}>
+              <FilterOutlined style={{ color: '#1890ff' }} />
+              <Text strong style={{ fontSize: 16 }}>批量操作</Text>
+            </Flex>
+            
+            <Flex align="center" gap={12}>
+              <Button 
+                icon={<ReloadOutlined />} 
+                onClick={() => fetchData()} 
+                loading={loading}
+                size="middle"
+                style={{
+                  height: 40,
+                  padding: '0 20px',
+                  borderRadius: 8,
+                }}
               >
-                批量通过
+                刷新
               </Button>
-            </Badge>
-            <Button
-              icon={<EyeOutlined />}
-              onClick={() => {
-                if (selectedRowKeys.length === 1) {
-                  navigate(`/admin/hotels/${selectedRowKeys[0]}`);
-                } else if (selectedRowKeys.length > 1) {
-                  message.warning('请只选择一个酒店查看详情');
-                } else {
-                  message.warning('请选择要查看的酒店');
-                }
-              }}
-            >
-              查看详情
-            </Button>
-          </Space>
-          <Button type="dashed" onClick={() => fetchData()} loading={loading}>
-            刷新
-          </Button>
+            </Flex>
+          </Flex>
+          
+          <Divider style={{ margin: 0 }} />
+          
+          <Flex align="center" justify="space-between" wrap gap={16}>
+            <Flex align="center" gap={16} wrap>
+              <Badge count={selectedRowKeys.length} offset={[-5, 5]} showZero>
+                <Button
+                  type="primary"
+                  icon={<CheckCircleOutlined />}
+                  onClick={handleBatchApprove}
+                  disabled={selectedRowKeys.length === 0}
+                  size="middle"
+                  style={{
+                    height: 40,
+                    padding: '0 24px',
+                    borderRadius: 8,
+                    fontSize: 14,
+                  }}
+                >
+                  批量通过
+                </Button>
+              </Badge>
+              
+              {selectedRowKeys.length > 0 && (
+                <Text type="secondary" style={{ fontSize: 13 }}>
+                  已选择 <Text strong style={{ color: '#1890ff' }}>{selectedRowKeys.length}</Text> 项
+                </Text>
+              )}
+            </Flex>
+            
+            {/* 右侧搜索框 */}
+            <SearchInput
+              placeholder="搜索酒店名称/商户"
+              prefix={<SearchOutlined style={{ color: '#bfbfbf' }} />}
+              style={{ width: 280, height: 40, borderRadius: 8 }}
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
+              allowClear
+            />
+          </Flex>
+
+          {/* 当前筛选条件显示 */}
+          {searchText && (
+            <Flex align="center" gap={8} wrap>
+              <Text type="secondary" style={{ fontSize: 13 }}>当前筛选：</Text>
+              {searchText && (
+                <Tag 
+                  color="processing" 
+                  closable 
+                  onClose={() => setSearchText('')}
+                  style={{ borderRadius: 4 }}
+                >
+                  搜索：{searchText}
+                </Tag>
+              )}
+            </Flex>
+          )}
         </Flex>
-      </Card>
+      </FilterCard>
 
       {/* 表格 */}
-      <Card style={{ borderRadius: 12 }} bodyStyle={{ padding: 0 }}>
-        <Table
-          rowKey="id"
-          columns={columns}
-          dataSource={data}
-          loading={loading}
-          rowSelection={{
-            selectedRowKeys,
-            onChange: setSelectedRowKeys,
-          }}
-          pagination={{
-            current: currentPage,
-            pageSize: pageSize,
-            total: total,
-            showSizeChanger: true,
-            showQuickJumper: true,
-            showTotal: (total) => `共 ${total} 条`,
-            onChange: (page, size) => {
-              setCurrentPage(page);
-              setPageSize(size || 10);
-              fetchData(page, size || 10);
-            },
-          }}
-          scroll={{ x: 1200 }}
-        />
-      </Card>
+      <TableCard>
+        <Flex vertical gap={16}>
+          <Flex align="center" justify="space-between">
+            <Flex align="center" gap={12}>
+              <BankOutlined style={{ color: '#1890ff', fontSize: 20 }} />
+              <Title level={5} style={{ margin: 0, fontWeight: 600 }}>
+                审核列表
+              </Title>
+              <Text type="secondary" style={{ fontSize: 13 }}>
+                显示 {filteredData.length} 条 / 共 {total} 条
+              </Text>
+            </Flex>
+          </Flex>
+          
+          <Table
+            rowKey="id"
+            columns={columns}
+            dataSource={filteredData}
+            loading={loading}
+            rowSelection={{
+              selectedRowKeys,
+              onChange: setSelectedRowKeys,
+            }}
+            pagination={{
+              current: currentPage,
+              pageSize: pageSize,
+              total: filteredData.length,
+              showSizeChanger: true,
+              showQuickJumper: true,
+              showTotal: (total) => `共 ${total} 条记录`,
+              onChange: (page, size) => {
+                setCurrentPage(page);
+                setPageSize(size || 10);
+                fetchData(page, size || 10);
+              },
+              pageSizeOptions: ['10', '20', '50', '100'],
+              position: ['bottomCenter'],
+            }}
+            scroll={{ x: 1200 }}
+            rowClassName={(record) => 
+              record.review_status === 'pending' ? 'row-pending' : ''
+            }
+            locale={{
+              emptyText: (
+                <Flex vertical gap={8} align="center" style={{ padding: '40px 0' }}>
+                  <Text type="secondary">
+                    {data.length === 0 ? '暂无待审核酒店' : '没有符合搜索条件的酒店'}
+                  </Text>
+                  {data.length > 0 && searchText && (
+                    <Button icon={<ReloadOutlined />} onClick={() => setSearchText('')} size="small">
+                      清除搜索
+                    </Button>
+                  )}
+                </Flex>
+              ),
+            }}
+          />
+        </Flex>
+      </TableCard>
 
       {/* 拒绝弹窗 */}
       <Modal
@@ -422,7 +609,23 @@ const PendingReview: React.FC = () => {
           </Form.Item>
         </Form>
       </Modal>
-    </div>
+
+      <style>{`
+        .row-pending {
+          background: rgba(250, 173, 20, 0.02);
+        }
+        .ant-table-row {
+          transition: all 0.2s;
+        }
+        .ant-table-row:hover {
+          transform: translateY(-1px);
+          box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .ant-table-tbody > tr > td {
+          padding: 16px 8px !important;
+        }
+      `}</style>
+    </PageContainer>
   );
 };
 

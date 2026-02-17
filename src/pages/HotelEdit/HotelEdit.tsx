@@ -1,4 +1,3 @@
-// HotelEdit.tsx
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
@@ -229,7 +228,7 @@ const HotelEdit: React.FC = () => {
               </Title>
               <Text type="secondary" style={{ fontSize: 14 }}>
                 {isEdit 
-                  ? '修改您的酒店信息，更新后需要重新审核，发布状态保持不变'
+                  ? '修改您的酒店信息，更新后需要重新审核'
                   : '创建新的酒店信息，提交后等待审核'
                 }
               </Text>
@@ -239,11 +238,6 @@ const HotelEdit: React.FC = () => {
             {isEdit && hotelData && (
               <Flex vertical align="flex-end" gap={4}>
                 {getStatusTags(hotelData)}
-                {hotelData.publish_status === 'published' && (
-                  <Text type="secondary" style={{ fontSize: 12 }}>
-                    修改后会自动下线，需重新审核通过后才能再次发布
-                  </Text>
-                )}
               </Flex>
             )}
           </Flex>

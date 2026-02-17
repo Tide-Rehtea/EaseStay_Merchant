@@ -1,4 +1,3 @@
-// HotelList.tsx
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
@@ -47,7 +46,7 @@ import type { ResHotel} from '@/api/types';
 const { Title, Text } = Typography;
 const { RangePicker } = DatePicker;
 
-// 样式组件（保持不变）
+// 样式组件
 const PageContainer = styled.div`
   display: flex;
   flex-direction: column;
@@ -129,6 +128,7 @@ const StatusTag = styled(Tag)<{ status: string }>`
   display: inline-flex;
   align-items: center;
   gap: 4px;
+  width: fit-content;
 `;
 
 const ActionButton = styled(Button)`
@@ -148,7 +148,23 @@ const ActionButton = styled(Button)`
   }
 `;
 
-// 状态配置
+// 文字省略样式组件
+const EllipsisText = styled(Text)`
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+`;
+
+const EllipsisDiv = styled.div`
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+`;
+
+// 状态配置（保持不变）
 const reviewStatusOptions = [
   { 
     value: 'pending', 
@@ -365,48 +381,48 @@ const HotelList: React.FC = () => {
     return { total, pending, approved, rejected, published, unpublished };
   }, [hotels, pagination.total]);
 
-  // 表格列定义
+  // 表格列定义 - 优化样式，保持原有栏目
   const columns = [
     {
       title: '酒店信息',
       dataIndex: 'name',
       key: 'name',
-      width: 280,
+      width: 300,
       render: (text: string, record: ResHotel) => (
-        <Flex vertical gap={4}>
-          <Flex align="center" gap={8}>
-            <div style={{
-              width: 32,
-              height: 32,
-              background: 'linear-gradient(135deg, #1890ff10, #36cfc910)',
-              borderRadius: 8,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: '#1890ff',
-            }}>
-              <BankOutlined />
-            </div>
-            <div>
-              <div style={{ fontWeight: 600, marginBottom: 2 }}>{text}</div>
-              {record.name_en && (
-                <div style={{ fontSize: 12, color: '#999' }}>{record.name_en}</div>
-              )}
-            </div>
-          </Flex>
-          {record.address && (
-            <Flex align="center" gap={4} style={{ fontSize: 12, color: '#666', marginLeft: 40 }}>
-              <EnvironmentOutlined style={{ fontSize: 12, color: '#1890ff' }} />
-              <span style={{ 
-                maxWidth: 200, 
-                overflow: 'hidden', 
-                textOverflow: 'ellipsis', 
-                whiteSpace: 'nowrap' 
-              }}>
-                {record.address}
-              </span>
-            </Flex>
-          )}
+        <Flex gap={12} align="flex-start">
+          <div style={{
+            width: 48,
+            height: 48,
+            background: 'linear-gradient(135deg, #1890ff10, #36cfc910)',
+            borderRadius: 8,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: '#1890ff',
+            flexShrink: 0,
+          }}>
+            <BankOutlined style={{ fontSize: 24 }} />
+          </div>
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <Tooltip title={text}>
+              <EllipsisDiv style={{ fontWeight: 600, marginBottom: 2 }}>{text}</EllipsisDiv>
+            </Tooltip>
+            {record.name_en && (
+              <Tooltip title={record.name_en}>
+                <EllipsisText type="secondary" style={{ fontSize: 12 }}>{record.name_en}</EllipsisText>
+              </Tooltip>
+            )}
+            {record.address && (
+              <Tooltip title={record.address}>
+                <Flex align="center" gap={4} style={{ fontSize: 12, color: '#666', marginTop: 4 }}>
+                  <EnvironmentOutlined style={{ fontSize: 12, color: '#1890ff', flexShrink: 0 }} />
+                  <EllipsisText type="secondary" style={{ fontSize: 12 }}>
+                    {record.address}
+                  </EllipsisText>
+                </Flex>
+              </Tooltip>
+            )}
+          </div>
         </Flex>
       ),
     },
@@ -492,10 +508,10 @@ const HotelList: React.FC = () => {
     {
       title: '操作',
       key: 'action',
-      width: 200,
+      width: 150,
       fixed: 'right' as const,
       render: (_: any, record: ResHotel) => (
-        <Space size={8}>
+        <Space size={4}>
           <ActionButton
             type="text"
             icon={<EyeOutlined />}
@@ -595,7 +611,7 @@ const HotelList: React.FC = () => {
           <Flex align="center" justify="space-between">
             <Flex align="center" gap={8}>
               <FilterOutlined style={{ color: '#1890ff' }} />
-              <Text strong style={{ fontSize: 16 }}>筛选条件</Text>
+              <Text strong style={{ fontSize: 16 }}>筛选</Text>
             </Flex>
             <Button icon={<ReloadOutlined />} onClick={resetFilters} size="middle">
               重置
@@ -726,7 +742,7 @@ const HotelList: React.FC = () => {
               position: ['bottomCenter'],
             }}
             onChange={handleTableChange}
-            scroll={{ x: 1300 }}
+            scroll={{ x: 1200 }}
             rowClassName={(record) => 
               record.review_status === 'pending' ? 'row-pending' : ''
             }
@@ -772,6 +788,9 @@ const HotelList: React.FC = () => {
         .ant-table-row:hover {
           transform: translateY(-1px);
           box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .ant-table-tbody > tr > td {
+          padding: 16px 8px !important;
         }
       `}</style>
     </PageContainer>

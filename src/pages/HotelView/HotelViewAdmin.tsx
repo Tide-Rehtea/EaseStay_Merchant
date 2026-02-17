@@ -1,7 +1,6 @@
-// HotelViewAdmin.tsx
 import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { message, Modal, Button, Space, Popconfirm, Input } from 'antd';
+import { message, Modal, Button, Space, Popconfirm, Input, Flex } from 'antd';
 import {
   CheckCircleOutlined,
   CloseCircleOutlined,
@@ -22,27 +21,37 @@ const HotelViewAdmin: React.FC = () => {
     if (!id) return;
     try {
       await api.admin.reviewHotel(Number(id), { action: 'approve' });
-      message.success('审核通过成功');
+      message.success({
+        content: '审核通过成功',
+        icon: <CheckCircleOutlined />,
+        style: { borderRadius: 8 }
+      });
       // 刷新页面
       window.location.reload();
     } catch (error) {
-      message.error('操作失败');
+      message.error('操作失败，请重试');
     }
   };
 
   const handleReject = () => {
+    let reason = '';
+    
     Modal.confirm({
       title: '拒绝审核',
+      icon: <CloseCircleOutlined style={{ color: '#f5222d' }} />,
       content: (
-        <Input.TextArea
-          placeholder="请输入拒绝原因"
-          id="reject_reason"
-          rows={3}
-        />
+        <div style={{ marginTop: 16 }}>
+          <Input.TextArea
+            placeholder="请输入拒绝原因"
+            id="reject_reason"
+            rows={4}
+            onChange={(e) => { reason = e.target.value; }}
+            style={{ borderRadius: 8 }}
+          />
+        </div>
       ),
       onOk: async () => {
-        const reason = (document.getElementById('reject_reason') as HTMLTextAreaElement)?.value;
-        if (!reason) {
+        if (!reason.trim()) {
           message.warning('请填写拒绝原因');
           return Promise.reject();
         }
@@ -51,12 +60,16 @@ const HotelViewAdmin: React.FC = () => {
             action: 'reject',
             reject_reason: reason,
           });
-          message.success('已拒绝');
+          message.success('已拒绝该酒店的审核申请');
           window.location.reload();
         } catch {
-          message.error('操作失败');
+          message.error('操作失败，请重试');
         }
       },
+      okText: '确认拒绝',
+      cancelText: '取消',
+      okButtonProps: { danger: true },
+      style: { top: '30%' },
     });
   };
 
@@ -65,10 +78,10 @@ const HotelViewAdmin: React.FC = () => {
     if (!id) return;
     try {
       await api.admin.toggleHotel(Number(id), { action });
-      message.success(action === 'publish' ? '已发布' : '已下线');
+      message.success(action === 'publish' ? '酒店已发布' : '酒店已下线');
       window.location.reload();
     } catch (error) {
-      message.error('操作失败');
+      message.error('操作失败，请重试');
     }
   };
 
@@ -79,11 +92,18 @@ const HotelViewAdmin: React.FC = () => {
     // 待审核状态 - 显示审核按钮
     if (hotel.review_status === 'pending') {
       return (
-        <Space>
+        <Flex gap={8}>
           <Button
             type="primary"
             icon={<CheckCircleOutlined />}
             onClick={handleApprove}
+            shape="round"
+            size="large"
+            style={{
+              background: 'linear-gradient(135deg, #52c41a, #389e0d)',
+              border: 'none',
+              boxShadow: '0 8px 16px rgba(82, 196, 26, 0.25)',
+            }}
           >
             通过审核
           </Button>
@@ -91,10 +111,12 @@ const HotelViewAdmin: React.FC = () => {
             danger
             icon={<CloseCircleOutlined />}
             onClick={handleReject}
+            shape="round"
+            size="large"
           >
             拒绝审核
           </Button>
-        </Space>
+        </Flex>
       );
     }
 
@@ -104,10 +126,19 @@ const HotelViewAdmin: React.FC = () => {
         return (
           <Popconfirm
             title="确认下线"
-            description="下线后酒店将不在用户端显示，确定吗？"
+            description="下线后酒店将不在用户端显示，确定要下线吗？"
             onConfirm={() => handleTogglePublish('unpublish')}
+            okText="确认下线"
+            cancelText="取消"
+            okButtonProps={{ danger: true }}
+            placement="bottomRight"
           >
-            <Button danger icon={<PauseCircleOutlined />}>
+            <Button 
+              danger 
+              icon={<PauseCircleOutlined />}
+              shape="round"
+              size="large"
+            >
               下线酒店
             </Button>
           </Popconfirm>
@@ -118,6 +149,13 @@ const HotelViewAdmin: React.FC = () => {
             type="primary"
             icon={<PlayCircleOutlined />}
             onClick={() => handleTogglePublish('publish')}
+            shape="round"
+            size="large"
+            style={{
+              background: 'linear-gradient(135deg, #1890ff, #096dd9)',
+              border: 'none',
+              boxShadow: '0 8px 16px rgba(24, 144, 255, 0.25)',
+            }}
           >
             发布酒店
           </Button>
