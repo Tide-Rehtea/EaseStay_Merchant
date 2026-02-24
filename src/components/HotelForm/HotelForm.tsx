@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { IMAGE_BASE } from "@/config/constants";
 import {
   Form,
   Input,
@@ -270,7 +271,7 @@ const HotelForm: React.FC<HotelFormProps> = ({
           // 如果是相对路径，补全为完整 URL
           const imageUrl = url.startsWith("http")
             ? url
-            : `http://localhost:3001${url}`;
+            : `${IMAGE_BASE}${url}`;
 
           return {
             uid: `-${index}`,
@@ -302,7 +303,7 @@ const HotelForm: React.FC<HotelFormProps> = ({
         .map((file) => {
           // 如果是完整 URL，转换为相对路径
           if (file.url?.startsWith("http")) {
-            return file.url.replace("http://localhost:3001", "");
+            return file.url.replace(IMAGE_BASE, "");
           }
           return file.url;
         })
@@ -475,7 +476,7 @@ const HotelForm: React.FC<HotelFormProps> = ({
     // 如果是相对路径，补全域名
     let previewUrl = file.url || file.preview!;
     if (previewUrl.startsWith("/uploads")) {
-      previewUrl = `http://localhost:3001${previewUrl}`;
+      previewUrl = `${IMAGE_BASE}${previewUrl}`;
     }
 
     setPreviewImage(previewUrl);

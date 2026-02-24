@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { IMAGE_BASE } from '@/config/constants';
 import {
   Card,
   Table,
@@ -207,7 +208,7 @@ const AllHotels: React.FC = () => {
   // 获取完整图片URL
   const getImageUrl = (path: string) => {
     if (!path) return null;
-    return path.startsWith('http') ? path : `http://localhost:3001${path}`;
+    return path.startsWith('http') ? path : `${IMAGE_BASE}${path}`;
   };
 
   // 状态标签映射

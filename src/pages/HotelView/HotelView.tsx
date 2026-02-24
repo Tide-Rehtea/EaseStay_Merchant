@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { IMAGE_BASE } from "@/config/constants";
 import {
   Card,
   Typography,
@@ -552,7 +553,7 @@ const MetaInfoItem = styled.div`
 // ==================== 工具函数 ====================
 const getImageUrl = (path: string) => {
   if (!path) return '';
-  return path.startsWith("http") ? path : `http://localhost:3001${path}`;
+  return path.startsWith("http") ? path : `${IMAGE_BASE}${path}`;
 };
 
 // 房内设施映射

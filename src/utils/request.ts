@@ -1,10 +1,11 @@
 import axios from 'axios';
 import { type ZodType, ZodError } from 'zod';
 import { message } from 'antd';
+import { API_REQUEST_BASE } from '@/config/constants';
 
 // 创建 axios 实例
 const request = axios.create({
-  baseURL: 'http://localhost:3001/api',
+  baseURL: API_REQUEST_BASE,
   timeout: 10000,
 });
 

@@ -12,6 +12,7 @@
   "dependencies": {
     "@ant-design/icons": "^6.1.0",
     "@reduxjs/toolkit": "^2.11.2",
+    "@tarojs/plugin-framework-react": "^4.1.11",
     "antd": "^6.2.3",
     "axios": "^1.13.4",
     "dayjs": "^1.11.19",

@@ -36,6 +36,7 @@ import { useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
 import { api } from '@/api';
 import type { ResHotel } from '@/api/types';
+import { IMAGE_BASE } from '@/config/constants';
 import styled from 'styled-components';
 
 const { Title, Text } = Typography;
@@ -241,7 +242,7 @@ const PendingReview: React.FC = () => {
   // 获取完整图片URL
   const getImageUrl = (path: string) => {
     if (!path) return null;
-    return path.startsWith('http') ? path : `http://localhost:3001${path}`;
+    return path.startsWith('http') ? path : `${IMAGE_BASE}${path}`;
   };
 
   // 搜索过滤

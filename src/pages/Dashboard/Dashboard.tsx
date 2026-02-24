@@ -38,6 +38,7 @@ import styled from "styled-components";
 import dayjs from "dayjs";
 import { api } from "@/api";
 import type { ResHotel } from "@/api/types";
+import { IMAGE_BASE } from "@/config/constants";
 
 const { Title, Text } = Typography;
 
@@ -770,7 +771,7 @@ const Dashboard: React.FC = () => {
                       hotel.images?.[0]
                         ? hotel.images[0].startsWith("http")
                           ? hotel.images[0]
-                          : `http://localhost:3001${hotel.images[0]}`
+                          : `${IMAGE_BASE}${hotel.images[0]}`
                         : null
                     }
                     icon={!hotel.images?.[0] && <ApartmentOutlined />}
