@@ -826,15 +826,6 @@ const HotelView: React.FC<HotelViewProps> = ({ adminActions }) => {
                     </Thumbnail>
                   ))}
                 </ThumbnailGrid>
-
-                <Image
-                  style={{ display: "none" }}
-                  preview={{
-                    visible: previewVisible,
-                    src: getImageUrl(selectedImage),
-                    onVisibleChange: setPreviewVisible,
-                  }}
-                />
               </GallerySection>
             ) : (
               <Section>
@@ -844,6 +835,16 @@ const HotelView: React.FC<HotelViewProps> = ({ adminActions }) => {
                 />
               </Section>
             )}
+
+            {/* 全局图片预览（支持酒店图与房型图） */}
+            <Image
+              style={{ display: "none" }}
+              preview={{
+                visible: previewVisible,
+                src: selectedImage ? getImageUrl(selectedImage) : undefined,
+                onVisibleChange: setPreviewVisible,
+              }}
+            />
 
             {/* 详细内容区域 - 两列布局 */}
             <Section>
@@ -892,6 +893,36 @@ const HotelView: React.FC<HotelViewProps> = ({ adminActions }) => {
                   {hotel.room_type?.length > 0 ? (
                     hotel.room_type.map((room, index) => (
                       <RoomCard key={index}>
+                        {room.images && room.images.length > 0 && (
+                          <Flex gap={8} wrap="wrap" style={{ marginBottom: 16 }}>
+                            {room.images.map((img, imgIdx) => (
+                              <div
+                                key={imgIdx}
+                                style={{
+                                  width: 80,
+                                  height: 60,
+                                  borderRadius: 8,
+                                  overflow: "hidden",
+                                  cursor: "pointer",
+                                }}
+                                onClick={() => {
+                                  setSelectedImage(img);
+                                  setPreviewVisible(true);
+                                }}
+                              >
+                                <img
+                                  src={getImageUrl(img)}
+                                  alt={`${room.type}-${imgIdx + 1}`}
+                                  style={{
+                                    width: "100%",
+                                    height: "100%",
+                                    objectFit: "cover",
+                                  }}
+                                />
+                              </div>
+                            ))}
+                          </Flex>
+                        )}
                         <Row gutter={[24, 16]} align="middle">
                           <Col xs={24} md={8}>
                             <Title level={4} style={{ margin: 0, color: "#1890ff" }}>

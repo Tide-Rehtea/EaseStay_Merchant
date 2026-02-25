@@ -14,6 +14,9 @@ export const roomTypeSchema = z.object({
   price: z.number().min(0, '价格不能为负数'),
   facilities: z.array(z.string()).optional(),
   description: z.string().optional(),
+  images: z.array(
+    z.string().regex(/^\/uploads\//, '图片URL必须以/uploads/开头')
+  ).max(5, '每个房型最多5张图片').optional().default([]),
 });
 
 // ==================== 酒店请求Schema ====================

@@ -206,6 +206,7 @@ interface RoomType {
   price: number;
   facilities: string[];
   description: string;
+  images: string[];
 }
 
 interface HotelFormProps {
@@ -223,7 +224,7 @@ const HotelForm: React.FC<HotelFormProps> = ({
 }) => {
   const [form] = Form.useForm();
   const [roomTypes, setRoomTypes] = useState<RoomType[]>([
-    { key: "1", type: "", price: 0, facilities: [], description: "" },
+    { key: "1", type: "", price: 0, facilities: [], description: "", images: [] },
   ]);
   const [fileList, setFileList] = useState<UploadFile[]>([]);
   const [selectedFacilities, setSelectedFacilities] = useState<string[]>([]);
@@ -252,6 +253,7 @@ const HotelForm: React.FC<HotelFormProps> = ({
             price: room.price || 0,
             facilities: room.facilities || [],
             description: room.description || "",
+            images: room.images || [],
           }),
         );
         setRoomTypes(formattedRoomTypes);
@@ -314,7 +316,17 @@ const HotelForm: React.FC<HotelFormProps> = ({
         open_date: values.open_date
           ? values.open_date.format("YYYY-MM-DD")
           : null,
-        room_type: validRoomTypes,
+        room_type: validRoomTypes.map((room) => ({
+          type: room.type,
+          price: room.price,
+          facilities: room.facilities,
+          description: room.description,
+          images: (room.images || [])
+            .map((url: string) =>
+              url?.startsWith("http") ? url.replace(IMAGE_BASE, "") : url
+            )
+            .filter(Boolean),
+        })),
         images: imageUrls, // 提交相对路径
         facilities: selectedFacilities,
         tags: selectedTags,
@@ -332,7 +344,7 @@ const HotelForm: React.FC<HotelFormProps> = ({
     const newKey = String(roomTypes.length + 1);
     setRoomTypes([
       ...roomTypes,
-      { key: newKey, type: "", price: 0, facilities: [], description: "" },
+      { key: newKey, type: "", price: 0, facilities: [], description: "", images: [] },
     ]);
   };
 
@@ -764,6 +776,66 @@ const HotelForm: React.FC<HotelFormProps> = ({
                   </Tag>
                 ))}
               </Space>
+
+              <Divider style={{ margin: "16px 0" }} />
+
+              <Text strong style={{ marginRight: 16, fontSize: 14, display: "block", marginBottom: 8 }}>
+                房型图片：
+              </Text>
+              <Upload
+                listType="picture-card"
+                fileList={(room.images || []).map((url, idx) => ({
+                  uid: `room-${room.key}-${idx}`,
+                  name: url.split("/").pop() || `image-${idx}.jpg`,
+                  status: "done" as const,
+                  url: url.startsWith("http") ? url : `${IMAGE_BASE}${url}`,
+                  thumbUrl: url.startsWith("http") ? url : `${IMAGE_BASE}${url}`,
+                }))}
+                beforeUpload={(file) => {
+                  const isImage = file.type.startsWith("image/");
+                  if (!isImage) {
+                    message.error("只能上传图片文件!");
+                    return Upload.LIST_IGNORE;
+                  }
+                  if ((room.images || []).length >= 5) {
+                    message.error("每个房型最多5张图片!");
+                    return Upload.LIST_IGNORE;
+                  }
+                  return true;
+                }}
+                customRequest={async (options) => {
+                  const { file, onSuccess, onError } = options;
+                  try {
+                    const response = await api.upload.uploadImage(file as File);
+                    if (response.success && response.data?.url) {
+                      const newImages = [...(room.images || []), response.data.url];
+                      updateRoomType(room.key, "images", newImages);
+                      onSuccess?.(response.data, file as any);
+                      message.success("上传成功");
+                    } else {
+                      onError?.(new Error(response.message));
+                    }
+                  } catch (err: any) {
+                    onError?.(err);
+                    message.error(err?.message || "上传失败");
+                  }
+                }}
+                onRemove={(file) => {
+                  const current = room.images || [];
+                  const newImages = current.filter(
+                    (u) => u !== file.url && (u.startsWith("http") ? u : `${IMAGE_BASE}${u}`) !== file.url
+                  );
+                  updateRoomType(room.key, "images", newImages);
+                }}
+                showUploadList={{ showPreviewIcon: false }}
+              >
+                {(room.images || []).length < 5 && (
+                  <div>
+                    <PlusOutlined />
+                    <div style={{ marginTop: 8 }}>上传</div>
+                  </div>
+                )}
+              </Upload>
             </RoomTypeCard>
           ))}
 
